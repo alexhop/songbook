@@ -1,0 +1,63 @@
+# title: (Don't Go Back To) Parens
+# artist: R.E.M.
+# key: E
+# tuning: Standard tuning
+# capo: No capo
+# group: Special
+# structure: intro – verse 1 – verse 2 – chorus – verse 3 – chorus – bridge – chorus ×2
+
+@diagram Asus4 x00230
+
+@tab
+   E                          A   Asus4  A   Asus4  A
+e|-----0-----0-----0-----0---|--0----0-----0----0-----0--|
+B|-----0-----0-----0-----0---|--2----3-----2----3-----2--|
+G|-----1-----1-----1-----1---|--2----2-----2----2-----2--|
+D|-----2-----2-----2-----2---|--2----2-----2----2-----2--|
+A|---2-----2-----2-----2-----|--0----0-----0----0-----0--|
+E|-0-----0-----0-----0-------|---------------------------|
+
+[Intro]
+E   |   E   A  Asus4  A  Asus4  A   |   (x2)
+
+[Verse 1]
+E                               A   Asus4  A  Asus4  A
+Fixture words go here on line one
+E                               A   Asus4  A  Asus4  A
+Fixture words go here on line two
+C#m           Bm          A   Asus4
+Turnaround words on line three
+
+[Verse 2]
+E                               A   Asus4  A  Asus4  A
+More fixture words on line four
+C#m           Bm          A   Asus4
+Turnaround words on line five
+
+[Chorus]
+B                 A          E
+Chorus words, chorus words, chorus
+B                 A          E
+Chorus words, chorus words, chorus
+
+[Verse 3]
+E                               A   Asus4  A  Asus4  A
+Fixture words go here on line six
+C#m           Bm          A   Asus4
+Turnaround words on line seven
+
+[Chorus]
+B                 A          E
+Chorus words, chorus words, chorus
+B                 A          E
+Chorus words, chorus words, chorus
+
+[Bridge]
+G#m         F#m        B
+Bridge words for the fixture
+
+[Chorus ×2]
+B                 A          E
+Chorus words, chorus words, chorus
+B                 A          E
+Chorus words, chorus words, chorus

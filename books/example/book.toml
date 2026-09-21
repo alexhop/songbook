@@ -1,0 +1,7 @@
+# Book settings read by build.py. Paths are relative to this file. Every key is optional.
+title = "Example Songbook"
+cover_word = "Songbook"                 # printed under the logo on the cover
+subtitle = "Eight public-domain songs to show the format"
+logo = "assets/logo.png"                # PNG with transparency; remove for a text-only cover
+footer_mark = "auto"                    # "auto" crops the logo above its wordmark; a path; or "none"
+groups = ["Singalongs", "Ballads", "Hymns and spirituals"]   # contents order

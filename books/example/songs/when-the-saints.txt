@@ -1,0 +1,57 @@
+# title: When the Saints Go Marching In
+# artist: Traditional
+# key: G
+# tuning: Standard tuning
+# capo: No capo
+# group: Hymns and spirituals
+# structure: verse 1 – verse 2 – verse 3 – verse 4 – verse 1 again, faster each time (the second line of every verse is the echo: leader, then everyone)
+# source: traditional gospel hymn, in print by 1896; standard text (public domain)
+
+@diagram G7 320001
+@diagram D7 xx0212
+
+[Intro]
+G   |   G   |   D7   |   G   |
+
+[Verse 1]
+G
+Oh, when the saints go marching in
+                        D7
+Oh, when the saints go marching in
+G          G7             C
+Oh Lord, I want to be in that number
+G              D7          G
+When the saints go marching in
+
+[Verse 2]
+G
+Oh, when the drums begin to bang
+                          D7
+Oh, when the drums begin to bang
+G          G7             C
+Oh Lord, I want to be in that number
+G              D7          G
+When the saints go marching in
+
+[Verse 3]
+G
+Oh, when the stars fall from the sky
+                            D7
+Oh, when the stars fall from the sky
+G          G7             C
+Oh Lord, I want to be in that number
+G              D7          G
+When the saints go marching in
+
+[Verse 4]
+G
+Oh, when the trumpet sounds its call
+                            D7
+Oh, when the trumpet sounds its call
+G          G7             C
+Oh Lord, I want to be in that number
+G              D7          G
+When the saints go marching in
+
+[Verse 5 – as verse 1, twice, faster]
+G   |   G   |   D7   |   D7   |   G   G7   |   C   |   G   D7   |   G   |   (x2)

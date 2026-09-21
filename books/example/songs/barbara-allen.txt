@@ -1,0 +1,161 @@
+# title: Barbara Allen
+# artist: Traditional
+# key: D
+# tuning: Standard tuning
+# capo: No capo
+# group: Ballads
+# spread: yes
+# structure: fifteen verses, all the same tune; one voice tells the story, everyone on the last line of each verse
+# source: "Barbara Allen's Cruelty", Percy's Reliques of Ancient English Poetry, 1765, modernised spelling (public domain)
+
+@diagram A7 x02020
+
+[Verse 1]
+D            G          D
+In Scarlet Town, where I was born
+Bm          A7
+There was a fair maid dwelling
+D             G          D
+Made every youth cry well-a-day
+         A7        D
+And her name was Barbara Allen
+
+[Verse 2]
+D            G          D
+All in the merry month of May
+Bm          A7
+When green buds they were swelling
+D             G          D
+Young Jemmy Grove on his death-bed lay
+         A7        D
+For love of Barbara Allen
+
+[Verse 3]
+D            G          D
+He sent his man unto her then
+Bm          A7
+To the town where she was dwelling
+D             G          D
+You must come to my master dear
+         A7        D
+If your name be Barbara Allen
+
+[Verse 4]
+D            G          D
+For death is printed on his face
+Bm          A7
+And o'er his heart is stealing
+D             G          D
+Then haste away to comfort him
+         A7        D
+O lovely Barbara Allen
+
+[Verse 5]
+D            G          D
+So slowly, slowly she came up
+Bm          A7
+And slowly she came nigh him
+D             G          D
+And all she said when there she came
+         A7        D
+Young man, I think you're dying
+
+[Verse 6]
+D            G          D
+He turned his face unto her straight
+Bm          A7
+With deadly sorrow sighing
+D             G          D
+O lovely maid, come pity me
+         A7        D
+I'm on my death-bed lying
+
+[Verse 7]
+D            G          D
+If on your death-bed you do lie
+Bm          A7
+What needs the tale you're telling
+D             G          D
+I cannot keep you from your death
+         A7        D
+Farewell, said Barbara Allen
+
+[Verse 8]
+D            G          D
+He turned his face unto the wall
+Bm          A7
+As deadly pangs he fell in
+D             G          D
+Adieu, adieu, adieu to all
+         A7        D
+Adieu to Barbara Allen
+
+[Verse 9]
+D            G          D
+As she was walking o'er the fields
+Bm          A7
+She heard the bell a-knelling
+D             G          D
+And every stroke did seem to say
+         A7        D
+Unworthy Barbara Allen
+
+[Verse 10]
+D            G          D
+She turned her body round about
+Bm          A7
+And spied the corpse a-coming
+D             G          D
+Lay down, lay down the corpse, she said
+         A7        D
+That I may look upon him
+
+[Verse 11]
+D            G          D
+With scornful eye she looked down
+Bm          A7
+Her cheek with laughter swelling
+D             G          D
+Whilst all her friends cried out amain
+         A7        D
+Unworthy Barbara Allen
+
+[Verse 12]
+D            G          D
+When he was dead and laid in grave
+Bm          A7
+Her heart was struck with sorrow
+D             G          D
+O mother, mother, make my bed
+         A7        D
+For I shall die tomorrow
+
+[Verse 13]
+D            G          D
+Hard-hearted creature him to slight
+Bm          A7
+Who loved me so dearly
+D             G          D
+O that I had been more kind to him
+         A7        D
+When he was alive and near me
+
+[Verse 14]
+D            G          D
+She on her death-bed as she lay
+Bm          A7
+Begged to be buried by him
+D             G          D
+And sore repented of the day
+         A7        D
+That she did e'er deny him
+
+[Verse 15]
+D            G          D
+Farewell, she said, ye virgins all
+Bm          A7
+And shun the fault I fell in
+D             G          D
+Henceforth take warning by the fall
+         A7        D
+Of cruel Barbara Allen

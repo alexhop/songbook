@@ -1,0 +1,111 @@
+# title: Oh My Darling, Clementine
+# artist: Percy Montrose
+# key: C
+# tuning: Standard tuning
+# capo: No capo
+# group: Singalongs
+# chorus-markers: yes
+# structure: verse 1 – chorus – verse 2 – chorus – verse 3 – chorus – verse 4 – chorus – verse 5 – chorus (waltz time; the chorus is everyone)
+# source: Percy Montrose, 1884; standard text (public domain)
+
+@diagram G7 320001
+
+[Verse 1]
+C
+In a cavern, in a canyon
+                      G7
+Excavating for a mine
+
+Dwelt a miner, forty-niner
+                      C
+And his daughter Clementine
+
+[Chorus]
+C
+Oh my darling, oh my darling
+                      G7
+Oh my darling Clementine
+
+You are lost and gone forever
+                      C
+Dreadful sorry, Clementine
+
+[Verse 2]
+C
+Light she was and like a fairy
+                      G7
+And her shoes were number nine
+
+Herring boxes, without topses
+                      C
+Sandals were for Clementine
+
+[Chorus]
+C
+Oh my darling, oh my darling
+                      G7
+Oh my darling Clementine
+
+You are lost and gone forever
+                      C
+Dreadful sorry, Clementine
+
+[Verse 3]
+C
+Drove she ducklings to the water
+                      G7
+Every morning just at nine
+
+Hit her foot against a splinter
+                      C
+Fell into the foaming brine
+
+[Chorus]
+C
+Oh my darling, oh my darling
+                      G7
+Oh my darling Clementine
+
+You are lost and gone forever
+                      C
+Dreadful sorry, Clementine
+
+[Verse 4]
+C
+Ruby lips above the water
+                      G7
+Blowing bubbles soft and fine
+
+But alas, I was no swimmer
+                      C
+So I lost my Clementine
+
+[Chorus]
+C
+Oh my darling, oh my darling
+                      G7
+Oh my darling Clementine
+
+You are lost and gone forever
+                      C
+Dreadful sorry, Clementine
+
+[Verse 5]
+C
+How I missed her, how I missed her
+                      G7
+How I missed my Clementine
+
+Till I kissed her little sister
+                      C
+And forgot my Clementine
+
+[Chorus]
+C
+Oh my darling, oh my darling
+                      G7
+Oh my darling Clementine
+
+You are lost and gone forever
+                      C
+Dreadful sorry, Clementine

@@ -1,0 +1,10 @@
+# title: Short
+# artist: Johnny Fixture
+# key: Am
+# group: Mellow
+
+[Verse 1]
+Am              C        D
+Short fixture line one
+Am              C        D
+Short fixture line two

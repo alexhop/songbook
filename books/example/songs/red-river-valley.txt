@@ -1,0 +1,71 @@
+# title: Red River Valley
+# artist: Traditional
+# key: G
+# tuning: Standard tuning
+# capo: No capo
+# group: Ballads
+# structure: verse 1 – chorus – verse 2 – chorus – verse 3 – chorus
+# source: traditional, in print by 1896; standard text (public domain)
+
+@diagram D7 xx0212
+@diagram G7 320001
+
+[Verse 1]
+G                                D7
+From this valley they say you are going
+                                       G
+We will miss your bright eyes and sweet smile
+                G7            C
+For they say you are taking the sunshine
+             G             D7        G
+That has brightened our pathway a while
+
+[Chorus]
+G                                D7
+Come and sit by my side if you love me
+                                     G
+Do not hasten to bid me adieu
+             G7            C
+But remember the Red River Valley
+            G           D7           G
+And the cowboy who loved you so true
+
+[Verse 2]
+G                                D7
+I've been thinking a long time, my darling
+                                       G
+Of the sweet words you never would say
+                 G7           C
+Now, alas, must my fond hopes all vanish
+              G          D7          G
+For they say you are going away
+
+[Chorus]
+G                                D7
+Come and sit by my side if you love me
+                                     G
+Do not hasten to bid me adieu
+             G7            C
+But remember the Red River Valley
+            G           D7           G
+And the cowboy who loved you so true
+
+[Verse 3]
+G                                  D7
+Won't you think of the valley you're leaving
+                                    G
+Oh, how lonely, how sad it will be
+                  G7           C
+Oh, think of the fond heart you're breaking
+             G            D7          G
+And the grief you are causing to me
+
+[Chorus]
+G                                D7
+Come and sit by my side if you love me
+                                     G
+Do not hasten to bid me adieu
+             G7            C
+But remember the Red River Valley
+            G           D7           G
+And the cowboy who loved you so true

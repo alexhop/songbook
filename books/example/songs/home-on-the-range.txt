@@ -1,0 +1,72 @@
+# title: Home on the Range
+# artist: Brewster Higley
+# key: G
+# tuning: Standard tuning
+# capo: No capo
+# group: Ballads
+# structure: verse 1 – chorus – verse 2 – chorus – verse 3 – chorus (slow waltz)
+# source: Brewster Higley, 1873; standard text as sung (public domain)
+
+@diagram G7 320001
+@diagram A7 x02020
+@diagram D7 xx0212
+
+[Verse 1]
+G                    G7          C            G
+Oh, give me a home where the buffalo roam
+                              A7         D7
+Where the deer and the antelope play
+G                     G7          C              G
+Where seldom is heard a discouraging word
+                    D7             G
+And the skies are not cloudy all day
+
+[Chorus]
+D7           G
+Home, home on the range
+                              A7         D7
+Where the deer and the antelope play
+G                     G7          C              G
+Where seldom is heard a discouraging word
+                    D7             G
+And the skies are not cloudy all day
+
+[Verse 2]
+G                        G7           C               G
+How often at night when the heavens are bright
+                             A7          D7
+With the light from the glittering stars
+G                    G7          C            G
+Have I stood here amazed and asked as I gazed
+                       D7           G
+If their glory exceeds that of ours
+
+[Chorus]
+D7           G
+Home, home on the range
+                              A7         D7
+Where the deer and the antelope play
+G                     G7          C              G
+Where seldom is heard a discouraging word
+                    D7             G
+And the skies are not cloudy all day
+
+[Verse 3]
+G                     G7            C              G
+Where the air is so pure, the zephyrs so free
+                          A7          D7
+The breezes so balmy and light
+G                        G7           C           G
+That I would not exchange my home on the range
+                     D7          G
+For all of the cities so bright
+
+[Chorus]
+D7           G
+Home, home on the range
+                              A7         D7
+Where the deer and the antelope play
+G                     G7          C              G
+Where seldom is heard a discouraging word
+                    D7             G
+And the skies are not cloudy all day

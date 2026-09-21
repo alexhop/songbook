@@ -1,0 +1,66 @@
+# title: Oh! Susanna
+# artist: Stephen Foster
+# key: G
+# tuning: Standard tuning
+# capo: No capo
+# group: Singalongs
+# structure: intro lick – verse 1 – chorus – verse 2 – chorus ×2
+# source: Stephen Foster, 1848; the first two verses of the standard text (public domain)
+
+@diagram D7 xx0212
+
+@tab
+   G                       D7
+e|-------3--3--3--5--3-----------------|
+B|-0--3-----------------3--3--1--------|
+
+[Intro – the tune of the first line]
+G   |   G   |   D7   |   G   |
+
+[Verse 1]
+G
+I come from Alabama
+              D7
+With my banjo on my knee
+G
+I'm going to Louisiana
+             D7        G
+My true love for to see
+G
+It rained all night the day I left
+                 D7
+The weather it was dry
+G
+The sun so hot I froze to death
+         D7        G
+Susanna, don't you cry
+
+[Chorus]
+C            G
+Oh! Susanna, oh don't you cry for me
+G                                  D7        G
+I've come from Alabama with my banjo on my knee
+
+[Verse 2]
+G
+I had a dream the other night
+                 D7
+When everything was still
+G
+I thought I saw Susanna
+              D7            G
+A-coming down the hill
+G
+The buckwheat cake was in her mouth
+                D7
+The tear was in her eye
+G
+Says I, I'm coming from the south
+         D7        G
+Susanna, don't you cry
+
+[Chorus ×2]
+C            G
+Oh! Susanna, oh don't you cry for me
+G                                  D7        G
+I've come from Alabama with my banjo on my knee

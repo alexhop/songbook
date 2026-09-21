@@ -1,0 +1,7 @@
+.venv/
+build/
+__pycache__/
+.pytest_cache/
+.claude/logs/
+.DS_Store
+/*.pdf

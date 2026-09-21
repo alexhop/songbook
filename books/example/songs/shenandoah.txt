@@ -1,0 +1,59 @@
+# title: Shenandoah
+# artist: Traditional
+# key: D
+# tuning: Standard tuning
+# capo: No capo
+# group: Ballads
+# structure: verse 1 – verse 2 – verse 3 – verse 4 (slow and free; one voice leads, everyone on "away, you rolling river")
+# source: traditional sea shanty, 19th century; standard text (public domain)
+
+@diagram A7 x02020
+@diagram Dmaj7 xx0222
+
+[Verse 1 – one voice]
+D            G           D
+Oh, Shenandoah, I long to see you
+Bm       G           A7
+Away, you rolling river
+D            G        Bm    Em
+Oh, Shenandoah, I long to see you
+A7            D      Bm
+Away, I'm bound away
+        G    A7      D    Dmaj7
+'Cross the wide Missouri
+
+[Verse 2]
+D            G           D
+Oh, Shenandoah, I love your daughter
+Bm       G           A7
+Away, you rolling river
+D            G        Bm    Em
+I'll take her 'cross your rolling water
+A7            D      Bm
+Away, I'm bound away
+        G    A7      D    Dmaj7
+'Cross the wide Missouri
+
+[Verse 3]
+D             G          D
+'Tis seven years since last I saw you
+Bm       G           A7
+Away, you rolling river
+D             G       Bm     Em
+'Tis seven years since last I saw you
+A7            D      Bm
+Away, I'm bound away
+        G    A7      D    Dmaj7
+'Cross the wide Missouri
+
+[Verse 4]
+D            G           D
+Oh, Shenandoah, I long to see you
+Bm       G           A7
+Away, you rolling river
+D            G        Bm    Em
+Oh, Shenandoah, I long to see you
+A7            D      Bm
+Away, I'm bound away
+        G    A7      D    D
+'Cross the wide Missouri
