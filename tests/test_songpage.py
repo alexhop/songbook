@@ -238,3 +238,42 @@ def test_parse_chart_rejects_stray_lines_and_nameless_parts(tmp_path):
     bad = write_chart(tmp_path, "# title: T\n\n@part\n", name="b.txt")
     with pytest.raises(ValueError, match="needs a name"):
         songpage.parse_chart(str(bad))
+
+
+def test_part_items_adds_cues_and_hides_chords(tmp_path):
+    ch = songpage.parse_chart(str(write_chart(tmp_path, BAND_CHART)))
+    drums = songpage.PartSpec("drums", "Drums", chords=False, default_cue="straight time")
+    items = songpage.part_items(ch.items, ch.parts["drums"], drums)
+    assert items == [
+        ("section", "Verse 1", "groove A"),
+        ("pair", [], "one two three"),
+        ("section", "Chorus ×2", "groove B, crash on 1"),
+        ("pair", [], "four"),
+    ]
+    keys = songpage.PartSpec("keys", "Keys", chords=True)
+    items = songpage.part_items(ch.items, ch.parts["keys"], keys)
+    assert items[0] == ("section", "Verse 1", "comp")
+    assert items[1] == ("pair", [(0, "G"), (9, "D7")], "one two three")
+    assert items[2] == ("section", "Chorus ×2", "")
+    bass = songpage.PartSpec("bass", "Bass", chords=True, default_cue="roots")
+    items = songpage.part_items(ch.items, None, bass)
+    assert items[0] == ("section", "Verse 1", "roots")
+
+
+def test_part_items_drops_chord_only_lines_without_chords():
+    items = [("section", "Intro"), ("chords", [(0, "Am")], ""), ("pair", [(0, "Am")], "la")]
+    spec = songpage.PartSpec("vocals", "Vocals", chords=False)
+    assert songpage.part_items(items, None, spec) == [("section", "Intro", ""), ("pair", [], "la")]
+
+
+def test_patch_label_numbers_from_bank():
+    bank = ["piano", "electric piano", "organ"]
+    assert songpage.patch_label("organ; piano for the verses", bank) == "Patch 3 · organ; piano for the verses"
+    assert songpage.patch_label("Electric Piano", bank) == "Patch 2 · Electric Piano"
+    assert songpage.patch_label("clavinet", bank) == "Patch: clavinet"
+    assert songpage.patch_label("", bank) == ""
+
+
+def test_chord_tokens_in_order_of_appearance():
+    items = [("chords", [(0, "Am"), (4, "|"), (8, "G")], ""), ("pair", [(0, "F"), (5, "Am")], "la")]
+    assert songpage.chord_tokens(items) == ["Am", "|", "G", "F", "Am"]

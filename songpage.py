@@ -207,6 +207,51 @@ def collapse_repeated_choruses(items):
     return out
 
 
+@dataclass
+class PartSpec:
+    """How a book renders one instrument's part (from book.toml's [[parts]])."""
+    name: str
+    title: str
+    chords: bool = True
+    default_cue: str = ""
+    orchid: bool = False
+    patches: list = field(default_factory=list)
+    intro: str | None = None
+    base: bool = False   # the book's first part: it also shows the chart's own diagrams and tab
+
+
+def part_items(items, part, spec):
+    """The shared body seen through one part: sections carry that part's cue, chord
+    lines are kept or dropped per the part."""
+    cues = part.cues if part else {}
+    out = []
+    for it in items:
+        if it[0] == "section":
+            cue = cues.get(cue_key(it[1]), cues.get("*", spec.default_cue))
+            out.append(("section", it[1], cue))
+        elif it[0] == "pair":
+            out.append(it if spec.chords else ("pair", [], it[2]))
+        elif spec.chords:
+            out.append(it)
+    return out
+
+
+def chord_tokens(items):
+    return [name for it in items if it[0] in ("pair", "chords") for _, name in it[1]]
+
+
+def patch_label(patch, bank):
+    """'organ' with bank [piano, organ] -> 'Patch 2 · organ'; a name not in the bank
+    prints as written. Only the text before a semicolon is matched."""
+    if not patch:
+        return ""
+    first = patch.split(";")[0].strip().lower()
+    for n, name in enumerate(bank, 1):
+        if first == name.lower():
+            return f"Patch {n} · {patch}"
+    return "Patch: " + patch
+
+
 # ---------- layout ----------
 class Style:
     def __init__(self, lyr):
