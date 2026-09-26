@@ -41,6 +41,7 @@ class Book:
     logo: Path | None = None
     footer_mark: str = "auto"   # "auto", "none", or an image path
     groups: list[str] = field(default_factory=list)
+    parts: list = field(default_factory=list)   # songpage.PartSpec, in book order
 
     @property
     def name(self):
@@ -49,6 +50,23 @@ class Book:
     @property
     def songs_dir(self):
         return self.dir / "songs"
+
+
+def load_parts(cfg, book_dir):
+    """The [[parts]] tables of book.toml as PartSpecs; the first one is the base part."""
+    parts = []
+    for i, p in enumerate(cfg.get("parts", [])):
+        if not p.get("name"):
+            raise SystemExit(f"{book_dir / 'book.toml'}: every [[parts]] entry needs a name")
+        intro = book_dir / p["intro"] if p.get("intro") else None
+        if intro is not None and not intro.exists():
+            raise SystemExit(f"{book_dir / 'book.toml'}: intro not found: {intro}")
+        parts.append(songpage.PartSpec(
+            name=p["name"], title=p.get("title", p["name"].title()),
+            chords=bool(p.get("chords", True)), default_cue=p.get("default_cue", ""),
+            orchid=bool(p.get("orchid", False)), patches=list(p.get("patches", [])),
+            intro=str(intro) if intro else None, base=i == 0))
+    return parts
 
 
 def load_book(book_dir):
@@ -72,6 +90,7 @@ def load_book(book_dir):
         logo=logo,
         footer_mark=mark,
         groups=list(cfg.get("groups", [])),
+        parts=load_parts(cfg, book_dir),
     )
 
 
@@ -189,9 +208,14 @@ def order_songs(items, groups):
 
 def discover(book):
     songs = []
+    known = {p.name for p in book.parts}
     for p in sorted(book.songs_dir.glob("*.txt")):
-        meta, _, _, _ = songpage.parse(str(p))
-        songs.append(Song(slug=p.stem, path=p, meta=meta, groups=book.groups))
+        ch = songpage.parse_chart(str(p))
+        unknown = [n for n in ch.parts if n not in known]
+        if known and unknown:
+            raise SystemExit(f"{p}: @part {', '.join(unknown)} not in book.toml parts "
+                             f"({', '.join(sorted(known))})")
+        songs.append(Song(slug=p.stem, path=p, meta=ch.meta, groups=book.groups))
     return order_songs(songs, book.groups)
 
 

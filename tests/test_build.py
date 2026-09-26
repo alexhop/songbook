@@ -123,3 +123,42 @@ def test_plan_order_falls_back_to_blank_when_group_has_no_single():
     planned = build.plan_order([r("a-spread", "Mellow", 2)], first_page=3)
     build.paginate(planned, first_page=3)
     assert planned[0].blank_before and planned[0].start_page == 4
+
+
+FIXTURE_BAND = Path("tests/fixtures/band")
+
+
+def test_load_book_reads_parts():
+    book = build.load_book(FIXTURE_BAND)
+    assert [p.name for p in book.parts] == ["guitar1", "keys", "drums", "vocals"]
+    g1, keys, drums = book.parts[0], book.parts[1], book.parts[2]
+    assert g1.base and not keys.base
+    assert keys.orchid and keys.patches == ["piano", "organ"]
+    assert keys.intro == str(FIXTURE_BAND / "parts" / "keys.md")
+    assert drums.chords is False and drums.default_cue == "straight time"
+    assert build.load_book(FIXTURE_BOOK).parts == []
+
+
+def test_load_book_rejects_bad_parts(tmp_path):
+    import pytest
+    book_dir = tmp_path / "b"
+    (book_dir / "songs").mkdir(parents=True)
+    (book_dir / "book.toml").write_text('[[parts]]\ntitle = "No name"\n', encoding="utf-8")
+    with pytest.raises(SystemExit, match="needs a name"):
+        build.load_book(book_dir)
+    (book_dir / "book.toml").write_text('[[parts]]\nname = "keys"\nintro = "missing.md"\n', encoding="utf-8")
+    with pytest.raises(SystemExit, match="intro not found"):
+        build.load_book(book_dir)
+
+
+def test_discover_rejects_unknown_part(tmp_path):
+    import pytest
+    book_dir = tmp_path / "band"
+    shutil.copytree(FIXTURE_BAND, book_dir)
+    (book_dir / "songs" / "odd.txt").write_text(
+        "# title: Odd\n# group: Mellow\n\n[Verse 1]\nla\n\n@part trumpet\n[*] blow\n", encoding="utf-8")
+    with pytest.raises(SystemExit, match="trumpet"):
+        build.discover(build.load_book(book_dir))
+    # a book without parts ignores overlays
+    (book_dir / "book.toml").write_text('title = "No parts"\n', encoding="utf-8")
+    assert "odd" in [s.slug for s in build.discover(build.load_book(book_dir))]

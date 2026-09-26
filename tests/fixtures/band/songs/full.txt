@@ -1,0 +1,63 @@
+# title: Full Band Song
+# artist: Johnny Fixture
+# key: G
+# group: Mellow
+# structure: intro – verse 1 – chorus – verse 2 – chorus
+
+@diagram D7 xx0212
+
+@tab
+e|--3--2--0--|
+B|-----------|
+
+[Intro]
+G   |   Em7   |   D7   |   G   |
+
+[Verse 1]
+G                Em7
+Fixture words go here on line one
+D7               B
+Fixture words go here on line two
+
+[Chorus]
+C/G              D7
+Fixture chorus words on line one
+G
+Fixture chorus words on line two
+
+[Verse 2 – quieter]
+G                Em7
+Fixture words go here on line three
+D7               G
+Fixture words go here on line four
+
+[Chorus]
+C/G              D7
+Fixture chorus words on line one
+G
+Fixture chorus words on line two
+
+@part keys
+# patch: organ; piano for the verses
+@note LH roots, RH pad; organ swell into the chorus
+[*] comp the chords
+[Chorus] organ, whole notes
+
+@part drums
+# patch: acoustic kit
+@grid groove A
+HH|x-x-x-x-|x-x-x-x-|
+SD|----o---|----o---|
+BD|o---o---|o-o-o---|
+
+@grid groove B
+HH|o-o-o-o-|o-o-o-o-|
+SD|----o---|----o---|
+BD|o-------|o-------|
+[*] groove A
+[Chorus] groove B, crash on 1
+[Verse 2] groove A, side-stick
+
+@part vocals
+[Verse 1] one voice
+[Chorus] everyone
