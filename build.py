@@ -2,12 +2,15 @@
 """
 build.py — render a book of chord charts to one printable PDF.
 
-Usage:  python3 build.py [book_dir] [build_dir]
+Usage:  python3 build.py [book_dir] [build_dir] [--part name]
 
 A book is a directory holding `book.toml` (title, logo, group order), `songs/*.txt`
 charts and any assets. With no argument the book named in BOOK.md is built. Output goes
 to build/<book name>/: one PDF per song under pages/, then songbook.pdf with a cover, a
 table of contents grouped by `# group:`, every song, and a back page.
+
+A book whose `book.toml` lists `[[parts]]` builds one PDF per part with a gear page
+after the cover and identical page numbers in every book.
 
 Songs are ordered by group, then arranged within each group so a two-page spread always
 opens on a left-hand (even) page; a blank page is inserted only when unavoidable.
@@ -158,6 +161,10 @@ class BuildResult:
     pages: int
     start_page: int = 0       # book page number, assigned by paginate()
     blank_before: bool = False
+    part_pdfs: dict = field(default_factory=dict)    # part name -> page pdf
+    part_sizes: dict = field(default_factory=dict)   # part name -> lyric size
+    part_fits: dict = field(default_factory=dict)
+    part_pages: dict = field(default_factory=dict)
 
 
 def plan_order(results, first_page):
@@ -219,7 +226,7 @@ def discover(book):
     return order_songs(songs, book.groups)
 
 
-def draw_cover(out, book):
+def draw_cover(out, book, part=None):
     W, H = letter
     c = canvas.Canvas(str(out), pagesize=letter)
     c.setTitle(book.title)
@@ -237,6 +244,10 @@ def draw_cover(out, book):
         c.setFont(songpage.LYR_FONT, 14)
         c.setFillColorRGB(0.3, 0.3, 0.3)
         c.drawCentredString(W / 2, y, book.subtitle)
+    if part is not None:
+        c.setFont(songpage.CH_FONT, 30)
+        c.setFillColorRGB(0, 0, 0)
+        c.drawCentredString(W / 2, y - 60, part.title)
     c.showPage()
     c.save()
 
@@ -251,6 +262,59 @@ def draw_back(out, book):
 
 def draw_blank(out):
     c = canvas.Canvas(str(out), pagesize=letter)
+    c.showPage()
+    c.save()
+
+
+def draw_gear(out, book, part):
+    """Setup page for one part's book: the part's intro notes (a text file; `#`
+    headings, `- ` bullets, blank-line paragraphs) and its patch bank as a numbered
+    list. Every band book has this page so page numbers stay aligned."""
+    W, H = letter
+    m = 56
+    c = canvas.Canvas(str(out), pagesize=letter)
+    c.setTitle(part.title + " setup")
+    c.setFillColorRGB(0, 0, 0)
+    c.setFont(songpage.CH_FONT, 22)
+    c.drawString(m, H - m - 22, part.title + " setup")
+    y = H - m - 22 - 34
+
+    def lines_out(text, x):
+        nonlocal y
+        for k, line in enumerate(songpage.wrap_words(text, songpage.LYR_FONT, 11, W - m - x)):
+            c.setFont(songpage.LYR_FONT, 11)
+            c.drawString(x, y, line)
+            y -= 15
+
+    if part.intro:
+        for para in Path(part.intro).read_text(encoding="utf-8").split("\n\n"):
+            para = para.strip()
+            if not para:
+                continue
+            if para.startswith("#"):
+                c.setFont(songpage.CH_FONT, 13)
+                c.drawString(m, y, para.lstrip("# "))
+                y -= 20
+            elif all(l.startswith(("- ", "* ")) for l in para.splitlines()):
+                for l in para.splitlines():
+                    c.setFont(songpage.LYR_FONT, 11)
+                    c.drawString(m, y, "•")
+                    lines_out(l[2:], m + 14)
+                y -= 6
+            else:
+                lines_out(" ".join(para.splitlines()), m)
+                y -= 6
+    if part.patches:
+        y -= 6
+        c.setFont(songpage.CH_FONT, 13)
+        c.drawString(m, y, "Patches")
+        y -= 20
+        for n, name in enumerate(part.patches, 1):
+            c.setFont(songpage.LYR_FONT, 11)
+            c.drawString(m + 14, y, f"{n}.  {name}")
+            y -= 15
+    if y < m:
+        raise SystemExit(f"{part.intro or part.name}: the setup page must fit on one page")
     c.showPage()
     c.save()
 
@@ -351,57 +415,109 @@ def stamp_page_numbers(writer, first_song_page, book):
         page.merge_page(PdfReader(buf).pages[0])
 
 
-def build(book_dir, build_dir=None):
-    book = load_book(book_dir)
-    build_dir = Path(build_dir) if build_dir else ROOT / "build" / book.name
-    pages_dir = build_dir / "pages"
-    pages_dir.mkdir(parents=True, exist_ok=True)
+def render_song(song, pages_dir, parts):
+    """Render one song once per part (or once, classic). The result's page count is
+    the largest any part needs, so every book gives the song the same pages."""
+    if not parts:
+        page_pdf = pages_dir / f"{song.slug}.pdf"
+        r = songpage.render(str(song.path), str(page_pdf))
+        return BuildResult(song, page_pdf, r.lyric_size, r.fits, r.landscape, r.pages)
+    res = None
+    for spec in parts:
+        page_pdf = pages_dir / spec.name / f"{song.slug}.pdf"
+        page_pdf.parent.mkdir(parents=True, exist_ok=True)
+        r = songpage.render(str(song.path), str(page_pdf), part=spec)
+        if res is None:
+            res = BuildResult(song, page_pdf, r.lyric_size, r.fits, r.landscape, r.pages)
+        res.part_pdfs[spec.name] = page_pdf
+        res.part_sizes[spec.name] = r.lyric_size
+        res.part_fits[spec.name] = r.fits
+        res.part_pages[spec.name] = r.pages
+        res.fits = res.fits and r.fits
+        res.pages = max(res.pages, r.pages)
+    return res
 
-    results = []
-    for s in discover(book):
-        page_pdf = pages_dir / f"{s.slug}.pdf"
-        r = songpage.render(str(s.path), str(page_pdf))
-        results.append(BuildResult(s, page_pdf, r.lyric_size, r.fits, r.landscape, r.pages))
 
-    cover = build_dir / "cover.pdf"
-    toc = build_dir / "toc.pdf"
-    blank = build_dir / "blank.pdf"
-    draw_cover(cover, book)
-    draw_blank(blank)
-    # TOC page count is not known until it is drawn; draw once to measure, then redraw
-    # with the correct page numbers.
-    results = plan_order(results, first_page=3)
-    draw_toc(toc, paginate(results, first_page=3), book)
-    toc_pages = len(PdfWriter(clone_from=str(toc)).pages)
-    if toc_pages > 1:
-        results = plan_order(results, first_page=2 + toc_pages)
-    draw_toc(toc, paginate(results, first_page=2 + toc_pages), book)
-
+def assemble(book, results, build_dir, toc, blank, first_song, part=None):
+    """Cover, gear page (band books only), contents, songs and back page as one PDF:
+    `<part>.pdf` for a part, `songbook.pdf` for a classic book."""
+    name = part.name if part else "songbook"
+    cover = build_dir / f"{name}-cover.pdf"
+    draw_cover(cover, book, part)
     writer = PdfWriter()
     writer.append(str(cover))
+    if part is not None:
+        gear = build_dir / f"{name}-gear.pdf"
+        draw_gear(gear, book, part)
+        writer.append(str(gear))
     writer.append(str(toc))
     for r in results:
         if r.blank_before:
             writer.append(str(blank))
-        writer.append(str(r.page_pdf))
-    stamp_page_numbers(writer, first_song_page=2 + toc_pages, book=book)
+        if part is None:
+            writer.append(str(r.page_pdf))
+            continue
+        writer.append(str(r.part_pdfs[part.name]))
+        for _ in range(r.pages - r.part_pages[part.name]):
+            writer.append(str(blank))
+    stamp_page_numbers(writer, first_song_page=first_song, book=book)
     # Back page on an even page so it is the outside back cover when printed.
     if len(writer.pages) % 2 == 0:
         writer.append(str(blank))
-    back = build_dir / "back.pdf"
+    back = build_dir / f"{name}-back.pdf"
     draw_back(back, book)
     writer.append(str(back))
-    writer.add_metadata({"/Title": book.title})
-    with open(build_dir / "songbook.pdf", "wb") as f:
+    writer.add_metadata({"/Title": book.title + (f" — {part.title}" if part else "")})
+    out = build_dir / f"{name}.pdf"
+    with open(out, "wb") as f:
         writer.write(f)
+    return out
+
+
+def build(book_dir, build_dir=None, only_part=None):
+    book = load_book(book_dir)
+    build_dir = Path(build_dir) if build_dir else ROOT / "build" / book.name
+    pages_dir = build_dir / "pages"
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    parts = book.parts
+    if only_part:
+        parts = [p for p in parts if p.name == only_part]
+        if not parts:
+            raise SystemExit(f"{book_dir}: no part named {only_part} "
+                             f"(parts: {', '.join(p.name for p in book.parts)})")
+
+    results = [render_song(s, pages_dir, parts) for s in discover(book)]
+
+    toc = build_dir / "toc.pdf"
+    blank = build_dir / "blank.pdf"
+    draw_blank(blank)
+    # Front matter: cover, the gear page in band books, then the contents. The contents'
+    # page count is not known until it is drawn; draw once to measure, then redraw.
+    front = 2 if parts else 1
+    results = plan_order(results, first_page=front + 2)
+    draw_toc(toc, paginate(results, first_page=front + 2), book)
+    toc_pages = len(PdfReader(str(toc)).pages)
+    first_song = front + 1 + toc_pages
+    if toc_pages > 1:
+        results = plan_order(results, first_page=first_song)
+    draw_toc(toc, paginate(results, first_page=first_song), book)
+
+    for spec in (parts or [None]):
+        assemble(book, results, build_dir, toc, blank, first_song, spec)
     return results
 
 
-def report(results):
-    rows = [(r.song.slug, r.song.title, r.song.group, f"p{r.start_page}",
-             f"{r.lyric_size:g}pt",
-             ("landscape" if r.landscape else "portrait") + (" spread" if r.pages == 2 else ""),
-             "ok" if r.fits else "DOES NOT FIT") for r in results]
+def report(results, parts=()):
+    def size(r, p):
+        return f"{r.part_sizes[p.name]:g}pt" + ("" if r.part_fits[p.name] else "!")
+    rows = []
+    if parts:
+        rows.append(("slug", "title", "group", "page", *[p.name for p in parts], "layout", "fit"))
+    for r in results:
+        sizes = [size(r, p) for p in parts] if parts else [f"{r.lyric_size:g}pt"]
+        rows.append((r.song.slug, r.song.title, r.song.group, f"p{r.start_page}", *sizes,
+                     ("landscape" if r.landscape else "portrait") + (" spread" if r.pages == 2 else ""),
+                     "ok" if r.fits else "DOES NOT FIT"))
     widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]))] if rows else []
     for row in rows:
         print("  ".join(cell.ljust(w) for cell, w in zip(row, widths)))
@@ -416,11 +532,22 @@ def report(results):
 
 
 def main(argv):
-    book_dir = Path(argv[1]) if len(argv) > 1 else default_book_dir()
-    build_dir = Path(argv[2]) if len(argv) > 2 else ROOT / "build" / book_dir.name
-    results = build(book_dir, build_dir)
-    ok = report(results)
-    print(f"\n{build_dir / 'songbook.pdf'}: {len(results)} song(s)")
+    args = list(argv[1:])
+    only = None
+    if "--part" in args:
+        k = args.index("--part")
+        if k + 1 >= len(args):
+            raise SystemExit("--part needs a part name")
+        only = args[k + 1]
+        del args[k:k + 2]
+    book_dir = Path(args[0]) if args else default_book_dir()
+    build_dir = Path(args[1]) if len(args) > 1 else ROOT / "build" / book_dir.name
+    book = load_book(book_dir)
+    parts = [p for p in book.parts if not only or p.name == only]
+    results = build(book_dir, build_dir, only)
+    ok = report(results, parts)
+    outs = [f"{p.name}.pdf" for p in parts] or ["songbook.pdf"]
+    print(f"\n{build_dir}: {len(results)} song(s) → {', '.join(outs)}")
     return 0 if ok else 1
 
 

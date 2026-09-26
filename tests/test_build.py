@@ -162,3 +162,57 @@ def test_discover_rejects_unknown_part(tmp_path):
     # a book without parts ignores overlays
     (book_dir / "book.toml").write_text('title = "No parts"\n', encoding="utf-8")
     assert "odd" in [s.slug for s in build.discover(build.load_book(book_dir))]
+
+
+def test_band_build_one_pdf_per_part_with_aligned_pages(tmp_path):
+    out = tmp_path / "band"
+    results = build.build(FIXTURE_BAND, out)
+    names = ["guitar1", "keys", "drums", "vocals"]
+    pdfs = {n: PdfReader(str(out / f"{n}.pdf")) for n in names}
+    assert not (out / "songbook.pdf").exists()
+    assert len({len(r.pages) for r in pdfs.values()}) == 1
+    # page 1 cover names the part, page 2 is the gear page, page 3 the shared contents
+    assert "Drums" in pdfs["drums"].pages[0].extract_text()
+    assert "Keys setup" in pdfs["keys"].pages[1].extract_text()
+    assert "1.  piano" in pdfs["keys"].pages[1].extract_text()
+    assert "Organ is patch 2" in pdfs["keys"].pages[1].extract_text()
+    assert "Drums setup" in pdfs["drums"].pages[1].extract_text()
+    assert len({r.pages[2].extract_text() for r in pdfs.values()}) == 1
+    full = next(r for r in results if r.song.slug == "full")
+    bare = next(r for r in results if r.song.slug == "bare")
+    assert full.start_page == 4 and full.pages == 1
+    assert bare.pages == 2 and bare.start_page == 6 and bare.blank_before
+    for r in pdfs.values():
+        assert "Full Band Song" in r.pages[full.start_page - 1].extract_text()
+        assert "Bare Song" in r.pages[bare.start_page - 1].extract_text()
+    drums = pdfs["drums"].pages[full.start_page - 1].extract_text()
+    assert "DRUMS" in drums and "groove B, crash on 1" in drums and "Em7" not in drums
+    keys = pdfs["keys"].pages[full.start_page - 1].extract_text()
+    assert "Orchid key: G" in keys and "Patch 2" in keys and "Em7" in keys
+    bare_drums = pdfs["drums"].pages[bare.start_page - 1].extract_text()
+    assert "straight time" in bare_drums
+    assert full.part_sizes["vocals"] >= full.part_sizes["guitar1"]
+    assert all(full.part_fits.values())
+
+
+def test_band_build_single_part(tmp_path, capsys):
+    out = tmp_path / "band"
+    results = build.build(FIXTURE_BAND, out, only_part="drums")
+    assert (out / "drums.pdf").exists() and not (out / "keys.pdf").exists()
+    assert list(results[0].part_pdfs) == ["drums"]
+    book = build.load_book(FIXTURE_BAND)
+    assert build.report(results, [p for p in book.parts if p.name == "drums"])
+    printed = capsys.readouterr().out
+    assert "drums" in printed and "full" in printed
+
+
+def test_build_unknown_only_part(tmp_path):
+    import pytest
+    with pytest.raises(SystemExit, match="trumpet"):
+        build.build(FIXTURE_BAND, tmp_path / "x", only_part="trumpet")
+
+
+def test_main_parses_part_flag(tmp_path, monkeypatch):
+    rc = build.main(["build.py", str(FIXTURE_BAND), str(tmp_path / "o"), "--part", "vocals"])
+    assert rc == 0
+    assert (tmp_path / "o" / "vocals.pdf").exists()
