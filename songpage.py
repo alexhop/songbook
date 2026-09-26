@@ -23,7 +23,7 @@ Layout: letter, header block, two columns, auto-shrinks lyric size to fit one pa
 import os
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from reportlab.lib.pagesizes import letter, landscape as _landscape
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
@@ -85,24 +85,86 @@ def is_placeholder(s):
     return bool(t) and set(t) <= {"~"}
 
 
-def parse(path):
-    meta, diagrams, tab, items = {}, [], [], []
+@dataclass
+class Part:
+    """One instrument's overlay on a chart: its metadata, header blocks and cues."""
+    name: str
+    meta: dict = field(default_factory=dict)
+    blocks: list = field(default_factory=list)   # ("mono", label, lines) | ("note", text) | ("image", path)
+    diagrams: list = field(default_factory=list)
+    cues: dict = field(default_factory=dict)      # cue_key(section) -> text; "*" is the default
+
+
+@dataclass
+class Chart:
+    meta: dict
+    diagrams: list
+    tab: list
+    items: list
+    parts: dict = field(default_factory=dict)   # name -> Part, in file order
+
+
+SECTION_RE = re.compile(r"^\[(.+?)\](.*)$")
+
+
+def cue_key(name):
+    """Sections match cues by their label alone: 'Verse 3 – quiet' and 'Chorus ×2' match
+    the cues [Verse 3] and [Chorus]."""
+    label = re.split(r"\s+[–—-]\s+", name.strip(), maxsplit=1)[0]
+    label = re.sub(r"\s*(×\d+|\(x\d+\))$", "", label)
+    return label.lower()
+
+
+def parse_chart(path):
+    meta, diagrams, tab, items, parts = {}, [], [], [], {}
+    part = None
     lines = open(path, encoding="utf-8").read().splitlines()
     i = 0
     while i < len(lines):
         raw = lines[i].rstrip("\n")
         s = raw.strip()
-        if s.startswith("#"):
+        if s.startswith("@part"):
+            name = s[len("@part"):].strip()
+            if not name:
+                raise ValueError(f"{path}:{i + 1}: @part needs a name")
+            part = parts.setdefault(name, Part(name))
+        elif s.startswith("#"):
             k, _, v = s[1:].partition(":")
-            meta[k.strip().lower()] = v.strip()
+            (part.meta if part else meta)[k.strip().lower()] = v.strip()
         elif s.startswith("@diagram"):
             _, name, frets = s.split(None, 2)
-            diagrams.append((name, frets))
-        elif s == "@tab":
+            (part.diagrams if part else diagrams).append((name, frets))
+        elif s.startswith(("@tab", "@grid")):
+            label = s.split(None, 1)[1].strip() if " " in s else ""
+            block = []
             i += 1
-            while i < len(lines) and lines[i].strip():
-                tab.append(lines[i].rstrip())
+            while i < len(lines) and lines[i].strip() \
+                    and not lines[i].lstrip().startswith(("[", "@", "#")):
+                block.append(lines[i].rstrip())
                 i += 1
+            if part:
+                part.blocks.append(("mono", label, block))
+            else:
+                tab.extend(block)
+            # If block ended at a special line, don't increment i again; continue to process it
+            if i < len(lines) and lines[i].lstrip().startswith(("[", "@", "#")):
+                continue
+            # If block ended at blank line, skip it
+            if i < len(lines) and not lines[i].strip():
+                i += 1
+            continue
+        elif s.startswith(("@note", "@image")):
+            if not part:
+                raise ValueError(f"{path}:{i + 1}: {s.split()[0]} is only valid inside @part")
+            kind, _, text = s.partition(" ")
+            if kind == "@image":
+                text = os.path.join(os.path.dirname(os.path.abspath(path)), text.strip())
+            part.blocks.append((kind[1:], text.strip()))
+        elif part:
+            if m := SECTION_RE.match(s):
+                part.cues[cue_key(m.group(1))] = m.group(2).strip()
+            elif s:
+                raise ValueError(f"{path}:{i + 1}: unexpected line in @part {part.name}: {s}")
         elif re.match(r"^\[.+\]$", s):
             items.append(("section", s[1:-1]))
         elif not s:
@@ -118,7 +180,13 @@ def parse(path):
         else:
             items.append(("pair", [], raw))
         i += 1
-    return meta, diagrams, tab, items
+    return Chart(meta, diagrams, tab, items, parts)
+
+
+def parse(path):
+    """The chart's own part as a four-tuple (meta, diagrams, tab, items)."""
+    ch = parse_chart(path)
+    return ch.meta, ch.diagrams, ch.tab, ch.items
 
 
 CHORUS_RE = re.compile(r"^chorus\b", re.IGNORECASE)

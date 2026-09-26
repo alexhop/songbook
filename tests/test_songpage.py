@@ -162,3 +162,79 @@ def test_form_line_shrinks_beside_a_wide_header_box(tmp_path):
     out = tmp_path / "wide.pdf"
     songpage.render(str(chart), str(out))
     assert PdfReader(str(out)).pages[0].extract_text().count("section") == 20
+
+
+BAND_CHART = """
+    # title: T
+    # artist: A
+    # key: G
+
+    @diagram D7 xx0212
+
+    [Verse 1]
+    G        D7
+    one two three
+    [Chorus ×2]
+    C
+    four
+
+    @part drums
+    # patch: acoustic kit
+    @grid groove A
+    HH|x-x-x-x-|
+    BD|o---o---|
+
+    @grid groove B
+    HH|o-o-o-o-|
+    [*] groove A
+    [Chorus] groove B, crash on 1
+
+    @part keys
+    @note LH roots, RH pad
+    @diagram Gmaj7 320002
+    [Verse 1] comp
+    """
+
+
+def test_parse_chart_collects_parts(tmp_path):
+    ch = songpage.parse_chart(str(write_chart(tmp_path, BAND_CHART)))
+    assert ch.meta["key"] == "G"
+    assert ch.diagrams == [("D7", "xx0212")]
+    assert [i[1] for i in ch.items if i[0] == "section"] == ["Verse 1", "Chorus ×2"]
+    assert list(ch.parts) == ["drums", "keys"]
+    drums = ch.parts["drums"]
+    assert drums.meta == {"patch": "acoustic kit"}
+    assert drums.blocks == [
+        ("mono", "groove A", ["HH|x-x-x-x-|", "BD|o---o---|"]),
+        ("mono", "groove B", ["HH|o-o-o-o-|"]),
+    ]
+    assert drums.cues == {"*": "groove A", "chorus": "groove B, crash on 1"}
+    keys = ch.parts["keys"]
+    assert keys.blocks == [("note", "LH roots, RH pad")]
+    assert keys.diagrams == [("Gmaj7", "320002")]
+    assert keys.cues == {"verse 1": "comp"}
+
+
+def test_parse_keeps_four_tuple_and_ignores_parts(tmp_path):
+    meta, diagrams, tab, items = songpage.parse(str(write_chart(tmp_path, BAND_CHART)))
+    assert meta["title"] == "T"
+    assert diagrams == [("D7", "xx0212")]
+    assert tab == []
+    assert items[-1] == ("pair", [(0, "C")], "four")
+
+
+def test_cue_key_strips_notes_and_repeats():
+    assert songpage.cue_key("Verse 3 – quiet, palm-muted") == "verse 3"
+    assert songpage.cue_key("Chorus ×2") == "chorus"
+    assert songpage.cue_key("Outro (x4)") == "outro"
+    assert songpage.cue_key("*") == "*"
+
+
+def test_parse_chart_rejects_stray_lines_and_nameless_parts(tmp_path):
+    import pytest
+    bad = write_chart(tmp_path, "# title: T\n\n@part drums\nsome stray words\n")
+    with pytest.raises(ValueError, match="stray words"):
+        songpage.parse_chart(str(bad))
+    bad = write_chart(tmp_path, "# title: T\n\n@part\n", name="b.txt")
+    with pytest.raises(ValueError, match="needs a name"):
+        songpage.parse_chart(str(bad))
