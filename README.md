@@ -5,6 +5,18 @@ above the lyrics in two columns, chord diagrams and a lick of tab in the corner,
 cover, a table of contents by category, page numbers, and a back page. Made for
 singalongs where the pages have to be readable by firelight.
 
+You bring the songs. The tool brings the layout: copy the example book, replace its
+charts with your own, and build.
+
+## What you get
+
+[**Example songbook (PDF)**](books/example/songbook.pdf) is the book built from
+`books/example`: eight public-domain songs with a cover, a contents page by category,
+chord diagrams and a lick of tab in each header, page numbers and a back page. Open it
+to see exactly what your own charts will turn into.
+
+[![The cover and a song page from the example songbook](books/example/preview.png)](books/example/songbook.pdf)
+
 ## Quick start
 
 ```
@@ -18,6 +30,9 @@ open build/example/songbook.pdf
 a song did not fit on its page.
 
 ## Make your own book
+
+The example songs are placeholders. A real book is the same format filled with your
+own charts:
 
 1. Copy `books/example` to `books/<your-name>`.
 2. Edit `book.toml`:
