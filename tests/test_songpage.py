@@ -277,3 +277,24 @@ def test_patch_label_numbers_from_bank():
 def test_chord_tokens_in_order_of_appearance():
     items = [("chords", [(0, "Am"), (4, "|"), (8, "G")], ""), ("pair", [(0, "F"), (5, "Am")], "la")]
     assert songpage.chord_tokens(items) == ["Am", "|", "G", "F", "Am"]
+
+
+def test_layout_and_draw_section_cues(tmp_path):
+    st = songpage.Style(12)
+    items = [("section", "Verse 1", "groove A, quiet"), ("pair", [], "la la"),
+             ("section", "Chorus", "a very long cue that goes on and on about the crash and the ride and the hats"),
+             ("pair", [], "la la")]
+    cols, fits = songpage.layout(st, items, colw=120, colh=400)
+    blocks = cols[0]
+    assert blocks[0]["cue"] == "groove A, quiet" and blocks[0]["cue_lines"] is None
+    assert blocks[0]["h"] == st.sec_h
+    assert len(blocks[2]["cue_lines"]) >= 2
+    assert blocks[2]["h"] > st.sec_h
+    from reportlab.pdfgen import canvas
+    out = tmp_path / "cues.pdf"
+    c = canvas.Canvas(str(out))
+    songpage.draw_columns(c, st, cols, 28, 700, 120, 18)
+    c.showPage()
+    c.save()
+    text = PdfReader(str(out)).pages[0].extract_text()
+    assert "VERSE 1" in text and "groove A, quiet" in text and "crash and the ride" in text

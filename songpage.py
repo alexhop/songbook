@@ -372,7 +372,14 @@ def layout(st, items, colw, colh, gutter=18, max_cols=2):
     blocks = []
     for it in items:
         if it[0] in ("section", "marker"):
-            blocks.append({"kind": it[0], "name": it[1], "h": st.sec_h})
+            cue = it[2] if len(it) > 2 else ""
+            cue_lines = None
+            if cue:
+                label_w = pdfmetrics.stringWidth(it[1].upper() + "  ", CH_FONT, 8.5)
+                if label_w + pdfmetrics.stringWidth("· " + cue, LYR_FONT, 8.5) > colw:
+                    cue_lines = wrap_words(cue, LYR_FONT, 8.5, colw)
+            h = st.sec_h + (len(cue_lines) * 10 if cue_lines else 0)
+            blocks.append({"kind": it[0], "name": it[1], "cue": cue, "cue_lines": cue_lines, "h": h})
         else:
             placeholder = is_placeholder(it[2])
             vis = wrap_line(st, it[1], it[2], colw, placeholder, overflow=gutter - 6)
@@ -576,6 +583,15 @@ def draw_columns(c, st, cols, x0, y0, colw, gutter):
                     name += "  (AS BEFORE)"
                 c.drawString(cx, y - 9, name)
                 nw = pdfmetrics.stringWidth(name, CH_FONT, 8.5)
+                if b.get("cue"):
+                    c.setFont(LYR_FONT, 8.5)
+                    c.setFillColorRGB(0.45, 0.45, 0.45)
+                    if b["cue_lines"] is None:
+                        c.drawString(cx + nw + 6, y - 9, "· " + b["cue"])
+                        nw += 6 + pdfmetrics.stringWidth("· " + b["cue"], LYR_FONT, 8.5)
+                    else:
+                        for k, line in enumerate(b["cue_lines"]):
+                            c.drawString(cx, y - 9 - 10 * (k + 1), line)
                 c.setStrokeColorRGB(0.8, 0.8, 0.8)
                 c.setLineWidth(0.5)
                 c.line(cx + nw + 6, y - 6, cx + colw, y - 6)
