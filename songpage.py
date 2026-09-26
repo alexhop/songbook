@@ -23,6 +23,7 @@ Layout: letter, header block, two columns, auto-shrinks lyric size to fit one pa
 import os
 import re
 import sys
+import orchid
 from dataclasses import dataclass, field
 from reportlab.lib.pagesizes import letter, landscape as _landscape
 from reportlab.pdfgen import canvas
@@ -669,14 +670,15 @@ def wrap_words(text, font, size, width):
     return lines
 
 
-def draw_continuation_header(c, meta, W, H, m):
+def draw_continuation_header(c, meta, W, H, m, part_title=""):
     """Slim header for the second page of a spread."""
     top = H - m
     c.setFillColorRGB(0.3, 0.3, 0.3)
     c.setFont(CH_FONT, 12)
     c.drawString(m, top - 14, meta.get("title", "") + "  (continued)")
     c.setFont(LYR_FONT, 9.5)
-    c.drawRightString(W - m, top - 14, meta.get("artist", ""))
+    right = " · ".join(v for v in [part_title, meta.get("artist", "")] if v)
+    c.drawRightString(W - m, top - 14, right)
     c.setStrokeColorRGB(0.8, 0.8, 0.8)
     c.setLineWidth(0.5)
     c.line(m, top - 20, W - m, top - 20)
@@ -743,15 +745,44 @@ class RenderResult:
     landscape: bool
     pages: int
     meta: dict
+    part: str | None = None
 
 
 SIZES = (13, 12.5, 12, 11.5, 11, 10.5, 10, 9.5)
 
 
-def render(chart, out, sizes=SIZES):
+def part_blocks(chart, overlay, spec):
+    """Header-box blocks for one part: the Orchid legend for keys, the chart's own
+    diagrams and tab for the base part, then the overlay's diagrams and blocks."""
+    blocks = []
+    want_legend = spec.orchid
+    if overlay and "orchid" in overlay.meta:
+        want_legend = truthy(overlay.meta["orchid"])
+    if want_legend:
+        key = chart.meta.get("key", "")
+        lines = orchid.legend_lines(key, chord_tokens(chart.items))
+        if lines:
+            blocks.append(("mono", "Orchid key: " + key, lines))
+    if spec.base:
+        if chart.diagrams:
+            blocks.append(("diagrams", chart.diagrams))
+        if chart.tab:
+            blocks.append(("mono", "", chart.tab))
+    if overlay:
+        if overlay.diagrams:
+            blocks.append(("diagrams", overlay.diagrams))
+        blocks.extend(overlay.blocks)
+    return blocks
+
+
+def render(chart, out, sizes=SIZES, part=None):
     """Render one chart to a PDF of one page, or two facing pages with `# spread: yes`.
-    Other metadata options: landscape, chorus-markers, min-size (auto-shrink floor)."""
-    meta, diagrams, tab, items = parse(chart)
+    With `part` (a PartSpec) the page shows the body through that part: its cues, its
+    header blocks, chord lines only if the part wants them."""
+    ch = parse_chart(chart)
+    meta = ch.meta
+    overlay = ch.parts.get(part.name) if part else None
+    items = ch.items if part is None else part_items(ch.items, overlay, part)
     use_landscape = truthy(meta.get("landscape"))
     pages = 2 if truthy(meta.get("spread")) else 1
     if truthy(meta.get("chorus-markers")):
@@ -762,7 +793,19 @@ def render(chart, out, sizes=SIZES):
     pagesize = _landscape(letter) if use_landscape else letter
     W, H = pagesize
     m = 28
-    hl = header_layout(meta, diagrams, tab, W, m)
+    diagrams, tab, prefix, suffix = ch.diagrams, ch.tab, "", ""
+    if part is None:
+        hl = header_layout(meta, diagrams, tab, W, m)
+    else:
+        prefix = part.title.upper()
+        suffix = patch_label(overlay.meta.get("patch", "") if overlay else "", part.patches)
+        blocks = part_blocks(ch, overlay, part)
+        classic = part.base and not part.orchid and not (overlay and (overlay.blocks or overlay.diagrams))
+        if classic:
+            hl = header_layout(meta, diagrams, tab, W, m)
+        else:
+            diagrams, tab = [], []
+            hl = header_layout_blocks(meta, blocks, W, m)
     header_h = hl["header_h"]
     gutter = 18
     colw = (W - 2 * m - gutter) / 2
@@ -782,16 +825,17 @@ def render(chart, out, sizes=SIZES):
         chosen = (st, cols, False)
     st, cols, fits = chosen
     c = canvas.Canvas(out, pagesize=pagesize)
-    c.setTitle(meta.get("title", "Song"))
+    c.setTitle(meta.get("title", "Song") + (f" ({part.title})" if part else ""))
     for p in range(pages):
         if p == 0:
-            draw_header(c, meta, diagrams, tab, W, H, m, hl)
+            draw_header(c, meta, diagrams, tab, W, H, m, hl, prefix, suffix)
         else:
-            draw_continuation_header(c, meta, W, H, m)
+            draw_continuation_header(c, meta, W, H, m, part.title if part else "")
         draw_columns(c, st, cols[2 * p:2 * p + 2], m, col_top - colh, colw, gutter)
         c.showPage()
     c.save()
-    return RenderResult(out, st.lyr, st.ch, fits, use_landscape, pages, meta)
+    return RenderResult(out, st.lyr, st.ch, fits, use_landscape, pages, meta,
+                        part.name if part else None)
 
 
 def main(argv):

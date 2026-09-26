@@ -339,3 +339,43 @@ def test_draw_header_with_blocks(tmp_path):
     text = PdfReader(str(out)).pages[0].extract_text()
     assert "DRUMS" in text and "Key G" in text and "Patch 1" in text
     assert "groove A" in text and "LH roots" in text
+
+
+def test_render_part_pages(tmp_path):
+    chart = write_chart(tmp_path, BAND_CHART)
+    drums = songpage.PartSpec("drums", "Drums", chords=False, patches=["acoustic kit", "808"])
+    res = songpage.render(str(chart), str(tmp_path / "drums.pdf"), part=drums)
+    assert res.part == "drums" and res.fits
+    text = PdfReader(str(tmp_path / "drums.pdf")).pages[0].extract_text()
+    assert "DRUMS" in text and "Patch 1" in text
+    assert "groove A" in text and "HH|x-x-x-x-|" in text
+    assert "crash on 1" in text
+    assert "D7" not in text  # chord lines hidden
+
+    keys = songpage.PartSpec("keys", "Keys", chords=True, orchid=True)
+    songpage.render(str(chart), str(tmp_path / "keys.pdf"), part=keys)
+    text = PdfReader(str(tmp_path / "keys.pdf")).pages[0].extract_text()
+    assert "Orchid key: G" in text and "D7" in text and "dominant 7th" in text
+    assert "LH roots" in text
+
+    g1 = songpage.PartSpec("guitar1", "Guitar 1", base=True)
+    songpage.render(str(chart), str(tmp_path / "g1.pdf"), part=g1)
+    text = PdfReader(str(tmp_path / "g1.pdf")).pages[0].extract_text()
+    assert "GUITAR 1" in text and "D7" in text and "groove" not in text
+
+    bass = songpage.PartSpec("bass", "Bass", default_cue="roots")
+    songpage.render(str(chart), str(tmp_path / "bass.pdf"), part=bass)
+    text = PdfReader(str(tmp_path / "bass.pdf")).pages[0].extract_text()
+    assert "roots" in text
+
+
+def test_part_orchid_override(tmp_path):
+    chart = write_chart(tmp_path, BAND_CHART + "\n# orchid: no\n")
+    keys = songpage.PartSpec("keys", "Keys", orchid=True)
+    songpage.render(str(chart), str(tmp_path / "keys.pdf"), part=keys)
+    assert "Orchid key" not in PdfReader(str(tmp_path / "keys.pdf")).pages[0].extract_text()
+
+
+def test_render_without_part_is_unchanged(tmp_path):
+    res = songpage.render(FIXTURE, str(tmp_path / "classic.pdf"))
+    assert res.part is None and res.fits
