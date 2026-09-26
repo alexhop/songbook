@@ -31,6 +31,12 @@ def test_legend_major_key():
     assert rows[5] == ("F", "major", "F", "bVII, outside the key", False)
 
 
+def test_legend_major_key_tritone_is_sharp_iv():
+    # The tritone above the tonic is spelled #IV in both major and minor keys.
+    rows = {r[0]: r for r in orchid.legend("F", ["F", "Bm"])}
+    assert rows["Bm"][3] == "#IV, outside the key"
+
+
 def test_legend_minor_key():
     rows = {r[0]: r for r in orchid.legend("Am", ["Am", "F", "G", "E7", "Bm", "Bdim", "C"])}
     assert rows["Am"][3] == "i" and rows["Am"][4]

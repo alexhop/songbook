@@ -15,7 +15,7 @@ QUALITY = {
 }
 NUMERAL = ("I", "II", "III", "IV", "V", "VI", "VII")
 CHROMATIC = {
-    MAJOR: {1: "bII", 3: "bIII", 6: "bV", 8: "bVI", 10: "bVII"},
+    MAJOR: {1: "bII", 3: "bIII", 6: "#IV", 8: "bVI", 10: "bVII"},
     MINOR: {1: "bII", 4: "#III", 6: "#IV", 9: "#VI", 11: "#VII"},
 }
 # suffix -> (modifier to press, triad class for the in-key test). The modifier names

@@ -40,6 +40,7 @@ Fixture chorus words on line two
 @part keys
 # patch: organ; piano for the verses
 @note LH roots, RH pad; organ swell into the chorus
+@image ../assets/riff.png
 [*] comp the chords
 [Chorus] organ, whole notes
 

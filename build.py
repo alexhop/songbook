@@ -55,12 +55,21 @@ class Book:
         return self.dir / "songs"
 
 
+RESERVED_PART_NAMES = {"toc", "blank", "songbook"}
+
+
 def load_parts(cfg, book_dir):
     """The [[parts]] tables of book.toml as PartSpecs; the first one is the base part."""
     parts = []
     for i, p in enumerate(cfg.get("parts", [])):
         if not p.get("name"):
             raise SystemExit(f"{book_dir / 'book.toml'}: every [[parts]] entry needs a name")
+        name = p["name"]
+        # These would overwrite the shared toc/blank PDFs or the classic songbook.pdf,
+        # or (a name with a slash) write outside pages/ via pages_dir / name / ....
+        if name in RESERVED_PART_NAMES or "/" in name or "\\" in name:
+            raise SystemExit(f"{book_dir / 'book.toml'}: part name {name!r} is reserved "
+                              f"or unsafe (not one of {sorted(RESERVED_PART_NAMES)}, no / or \\)")
         intro = book_dir / p["intro"] if p.get("intro") else None
         if intro is not None and not intro.exists():
             raise SystemExit(f"{book_dir / 'book.toml'}: intro not found: {intro}")
@@ -458,6 +467,8 @@ def assemble(book, results, build_dir, toc, blank, first_song, part=None):
             writer.append(str(r.page_pdf))
             continue
         writer.append(str(r.part_pdfs[part.name]))
+        # Unreachable today: every part inherits the base chart's spread flag, so
+        # r.pages == r.part_pages[part.name] always. Kept for a future per-part spread.
         for _ in range(r.pages - r.part_pages[part.name]):
             writer.append(str(blank))
     stamp_page_numbers(writer, first_song_page=first_song, book=book)
@@ -481,6 +492,9 @@ def build(book_dir, build_dir=None, only_part=None):
     pages_dir.mkdir(parents=True, exist_ok=True)
     parts = book.parts
     if only_part:
+        # Filtering here (not just at assemble) also limits render_song's per-part page
+        # count to this one part; safe only because spread is book-wide, not per-part —
+        # a per-part spread would make --part renumber pages relative to the full build.
         parts = [p for p in parts if p.name == only_part]
         if not parts:
             raise SystemExit(f"{book_dir}: no part named {only_part} "

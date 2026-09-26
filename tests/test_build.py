@@ -149,6 +149,11 @@ def test_load_book_rejects_bad_parts(tmp_path):
     (book_dir / "book.toml").write_text('[[parts]]\nname = "keys"\nintro = "missing.md"\n', encoding="utf-8")
     with pytest.raises(SystemExit, match="intro not found"):
         build.load_book(book_dir)
+    for bad in ("toc", "blank", "songbook", "drums/kit", "drums\\kit"):
+        # a TOML literal (single-quoted) string keeps a backslash from being an escape
+        (book_dir / "book.toml").write_text(f"[[parts]]\nname = '{bad}'\n", encoding="utf-8")
+        with pytest.raises(SystemExit, match="reserved or unsafe"):
+            build.load_book(book_dir)
 
 
 def test_discover_rejects_unknown_part(tmp_path):
@@ -189,6 +194,8 @@ def test_band_build_one_pdf_per_part_with_aligned_pages(tmp_path):
     assert "DRUMS" in drums and "groove B, crash on 1" in drums and "Em7" not in drums
     keys = pdfs["keys"].pages[full.start_page - 1].extract_text()
     assert "Orchid key: G" in keys and "Patch 2" in keys and "Em7" in keys
+    # the keys part's header @image (a riff diagram) still renders and the page fits
+    assert full.part_fits["keys"]
     bare_drums = pdfs["drums"].pages[bare.start_page - 1].extract_text()
     assert "straight time" in bare_drums
     assert full.part_sizes["vocals"] >= full.part_sizes["guitar1"]

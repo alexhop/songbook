@@ -18,6 +18,10 @@ Optional metadata: # group: <toc category>, # landscape: yes, # spread: yes (two
 pages), # chorus-markers: yes (repeated choruses print as a one-line cue),
 # min-size: 12 (floor for the auto-shrink).
 
+A chart can append @part <name> overlay blocks for a band book's per-instrument pages
+(header material and per-section cues); render(..., part=PartSpec) renders the chart
+through one such part instead of its own base content.
+
 Layout: letter, header block, two columns, auto-shrinks lyric size to fit one page.
 """
 import os
@@ -158,9 +162,12 @@ def parse_chart(path):
             if not part:
                 raise ValueError(f"{path}:{i + 1}: {s.split()[0]} is only valid inside @part")
             kind, _, text = s.partition(" ")
+            text = text.strip()
+            if not text:
+                raise ValueError(f"{path}:{i + 1}: {kind} needs text")
             if kind == "@image":
-                text = os.path.join(os.path.dirname(os.path.abspath(path)), text.strip())
-            part.blocks.append((kind[1:], text.strip()))
+                text = os.path.join(os.path.dirname(os.path.abspath(path)), text)
+            part.blocks.append((kind[1:], text))
         elif part:
             if m := SECTION_RE.match(s):
                 part.cues[cue_key(m.group(1))] = m.group(2).strip()
@@ -599,20 +606,23 @@ def draw_header(c, meta, diagrams, tab, W, H, m, hl=None, guide_prefix="", guide
     c.setFont(LYR_FONT, 12)
     c.setFillColorRGB(0.3, 0.3, 0.3)
     c.drawString(m + tw + 8, top - 19, "— " + artist)
+    box_w = hl["box_w"]
+    bx, by = W - m - box_w, top
+    avail = (bx - 8 if box_w else W - m) - m
+
+    # A part prefix/patch suffix can push the guide line wide enough to run under the
+    # header box, so it shrinks the same way the form line below does.
     guide = " · ".join(v for v in [
         guide_prefix,
         ("Key " + meta["key"]) if "key" in meta else "",
         meta.get("tuning", ""), meta.get("capo", ""), guide_suffix] if v)
     c.setFillColorRGB(0, 0, 0)
-    c.setFont(CH_FONT, 10.5)
+    c.setFont(CH_FONT, guide_size(guide, avail))
     c.drawString(m, top - 37, guide)
-    box_w = hl["box_w"]
-    bx, by = W - m - box_w, top
 
     # The form line shrinks (down to 8pt) and then wraps onto a second line rather than
     # run under the header box.
     form = "Form:  " + meta.get("structure", "")
-    avail = (bx - 8 if box_w else W - m) - m
     for size in (9.5, 9, 8.5, 8):
         lines = wrap_words(form, LYR_FONT, size, avail)
         if len(lines) <= 2:
@@ -653,6 +663,15 @@ def draw_header(c, meta, diagrams, tab, W, H, m, hl=None, guide_prefix="", guide
     c.setStrokeColorRGB(0.75, 0.75, 0.75)
     c.setLineWidth(0.5)
     c.roundRect(bx - 2, top - box_h, box_w + 2, box_h, 4, stroke=1, fill=0)
+
+
+def guide_size(guide, avail):
+    """Largest size in (10.5, 10, 9.5, 9, 8.5) at which the guide line clears avail; 8.5
+    (unshrunk further) if even that overruns, since the fix then belongs in the chart."""
+    for size in (10.5, 10, 9.5, 9, 8.5):
+        if pdfmetrics.stringWidth(guide, CH_FONT, size) <= avail:
+            return size
+    return 8.5
 
 
 def wrap_words(text, font, size, width):

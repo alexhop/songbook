@@ -240,6 +240,16 @@ def test_parse_chart_rejects_stray_lines_and_nameless_parts(tmp_path):
         songpage.parse_chart(str(bad))
 
 
+def test_parse_chart_rejects_bare_note_and_image(tmp_path):
+    import pytest
+    bad = write_chart(tmp_path, "# title: T\n\n@part keys\n@note\n", name="c.txt")
+    with pytest.raises(ValueError, match="@note needs text"):
+        songpage.parse_chart(str(bad))
+    bad = write_chart(tmp_path, "# title: T\n\n@part keys\n@image\n", name="d.txt")
+    with pytest.raises(ValueError, match="@image needs text"):
+        songpage.parse_chart(str(bad))
+
+
 def test_part_items_adds_cues_and_hides_chords(tmp_path):
     ch = songpage.parse_chart(str(write_chart(tmp_path, BAND_CHART)))
     drums = songpage.PartSpec("drums", "Drums", chords=False, default_cue="straight time")
@@ -297,7 +307,10 @@ def test_layout_and_draw_section_cues(tmp_path):
     c.showPage()
     c.save()
     text = PdfReader(str(out)).pages[0].extract_text()
-    assert "VERSE 1" in text and "groove A, quiet" in text and "crash and the ride" in text
+    # The long cue wraps onto multiple lines; where exactly it wraps depends on the
+    # font (DejaVu on Linux CI vs. Arial Narrow locally), so compare wrap-independently.
+    norm = " ".join(text.split())
+    assert "VERSE 1" in text and "groove A, quiet" in text and "crash and the ride" in norm
 
 
 def test_box_layout_corner_and_band():
@@ -339,6 +352,37 @@ def test_draw_header_with_blocks(tmp_path):
     text = PdfReader(str(out)).pages[0].extract_text()
     assert "DRUMS" in text and "Key G" in text and "Patch 1" in text
     assert "groove A" in text and "LH roots" in text
+
+
+def test_guide_size_shrinks_to_fit():
+    from reportlab.pdfbase import pdfmetrics
+    guide = " · ".join(["DRUMS", "Key G", "Standard tuning", "No capo",
+                         "Patch 2 · a very long patch name for the drum kit that keeps going"])
+    avail = 400  # too narrow for 10.5/9.5pt but wide enough at 9pt
+    size = songpage.guide_size(guide, avail)
+    assert size == 9
+    assert pdfmetrics.stringWidth(guide, songpage.CH_FONT, size) <= avail
+
+    # Below the 8.5pt floor, guide_size gives up and returns 8.5 anyway.
+    assert songpage.guide_size(guide, 50) == 8.5
+
+
+def test_guide_line_fits_beside_corner_box():
+    """Regression for the Blister in the Sun drums page: a part prefix plus a long
+    # patch: suffix must not push the guide line under a corner-mode box."""
+    from reportlab.pdfbase import pdfmetrics
+    meta = {"title": "Blister in the Sun", "artist": "Violent Femmes", "key": "G",
+            "structure": "verse – chorus"}
+    blocks = [("mono", "groove A", ["HH|x-x-x-x-|x-x-x-x-|", "BD|o---o---|o---o---|"])]
+    hl = songpage.header_layout_blocks(meta, blocks, 612, 28)
+    assert hl["box"]["mode"] == "corner"
+    box_w = hl["box_w"]
+    bx = 612 - 28 - box_w
+    avail = (bx - 8 if box_w else 612 - 28) - 28
+    guide = " · ".join(["DRUMS", "Key G", "Standard tuning", "No capo",
+                         "Patch 2 · a very long patch name for the drum kit that keeps going"])
+    size = songpage.guide_size(guide, avail)
+    assert pdfmetrics.stringWidth(guide, songpage.CH_FONT, size) <= avail
 
 
 def test_render_part_pages(tmp_path):
