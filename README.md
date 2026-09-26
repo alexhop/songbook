@@ -75,8 +75,8 @@ Oh! Susanna, oh don't you cry for me
   `G   |   C   |   D7   |   G   |   (x2)`.
 - `@diagram NAME frets` adds a chord box to the header. Frets run low string to high,
   `x` mutes and `0` is open: `@diagram D7 xx0212`.
-- `@tab` starts a tab block for the header box and ends at a blank line. Include only
-  the strings the lick uses.
+- `@tab` starts a tab block for the header box and ends at a blank line or the next line
+  starting with `[`, `@` or `#`. Include only the strings the lick uses.
 - Chords align by column, so use spaces, not tabs, and keep chord names above the
   syllable they land on.
 
@@ -134,11 +134,13 @@ BD|o---o---|o-o-o---|
 [Chorus] organ, whole notes
 ```
 
-Blocks: `@tab label` and `@grid label` (monospace, end at a blank line), `@diagram`,
-`@note text` and `@image file.png`. `[Section] cue` matches the body section of that
-name; `[*]` is the fallback. A part with no block still gets a page with the lyrics
-and the book's `default_cue`. `# orchid: no` in a part turns the legend off for one
-song.
+Blocks: `@tab label` and `@grid label` (monospace, end at a blank line or the next line
+starting with `[`, `@` or `#`), `@diagram`, `@note text` and `@image file.png`.
+`[Section] cue` matches the body section of that name; `[*]` is the fallback. A part
+with no block still gets a page with the lyrics and the book's `default_cue`. A
+`[Section]` cue with no text after it (`[Chorus]` with nothing following) suppresses
+the default cue for that section rather than falling back to it. `# orchid: no` in a
+part turns the legend off for one song.
 
 `build.py books/<name>` writes `build/<name>/<part>.pdf` for every part: a cover naming
 the part, a setup page (the intro text and the patch list), the contents, the songs

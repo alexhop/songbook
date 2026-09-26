@@ -113,17 +113,19 @@ everything with `.venv/bin/python`.
 
 @diagram Asus4 x00230        <- frets low string → high, x = mute, 0 = open; shapes above
                                 the 4th fret draw from their lowest fret with an "Nfr" label
-@tab                         <- tab block for the header box; ends at a blank line.
-                                Only the strings the lick uses: drop empty low-E / A lines
+@tab                         <- tab block for the header box; ends at a blank line or the
+                                next line starting with [, @ or #. Only the strings the
+                                lick uses: drop empty low-E / A lines
 e|--0-----0-----0-----0---|
 B|--2--h3----p2--h3----p2-|
 ...
-@part drums                  <- overlay for one instrument; see README "Band books"
 
 [Verse 1]                    <- section header
 E                               A   Asus4  A  Asus4  A     <- chord line (positions align with lyric below)
 lyric line goes here                                       <- lyric line
 E   |   E   A  Asus4  A  Asus4  A   |   (x2)              <- chord line with no lyric = chord-only line
+
+@part drums                  <- overlay for one instrument; see README "Band books"
 ```
 
 - A line is a chord line if every token parses as a chord (or `|`, `(x2)`, `N.C.`).
