@@ -449,17 +449,123 @@ def draw_diagram(c, x, y, name, frets, size=9):
 
 HEADER_H = 72
 DIAGRAM_ROW_H = 52
+MONO_SIZE, MONO_LEAD = 7.2, 8.4
+NOTE_SIZE, NOTE_W = 8, 150
+BOX_PAD = 6
+CORNER_H = 62
+
+
+def measure_block(block):
+    """(width, height, drawable) for one header-box block. Notes are wrapped and images
+    opened here so drawing needs no further measuring."""
+    kind = block[0]
+    if kind == "mono":
+        _, label, lines = block
+        widths = [pdfmetrics.stringWidth(t, MONO, MONO_SIZE) for t in lines]
+        widths.append(pdfmetrics.stringWidth(label, CH_FONT, 8) if label else 0)
+        return max(widths) + 8, MONO_LEAD * len(lines) + (11 if label else 0) + 6, block
+    if kind == "note":
+        lines = wrap_words(block[1], LYR_FONT, NOTE_SIZE, NOTE_W)
+        w = max(pdfmetrics.stringWidth(t, LYR_FONT, NOTE_SIZE) for t in lines) + 8
+        return w, (NOTE_SIZE + 2) * len(lines) + 6, ("note", lines)
+    if kind == "image":
+        from reportlab.lib.utils import ImageReader
+        img = ImageReader(block[1])
+        iw, ih = img.getSize()
+        return 52 * iw / ih + 8, 52, ("image", img)
+    if kind == "diagrams":
+        return diagram_width(8) * len(block[1]) + 6, 56, block
+    raise ValueError(f"unknown header block {kind}")
+
+
+def box_layout(blocks, W, m, title_w):
+    """Place header blocks in one row beside the title when they fit there, otherwise
+    in rows across a full-width band under the header."""
+    measured = [measure_block(b) for b in blocks]
+    if not measured:
+        return {"mode": "none", "rows": [], "box_w": 0, "box_h": 0, "header_h": HEADER_H}
+    row_w = sum(w for w, _, _ in measured) + BOX_PAD * (len(measured) + 1)
+    row_h = max(h for _, h, _ in measured) + BOX_PAD
+    if row_h <= CORNER_H and W - m - row_w >= m + title_w + 10:
+        return {"mode": "corner", "rows": [measured], "box_w": row_w, "box_h": CORNER_H,
+                "header_h": HEADER_H}
+    rows, cur, x = [], [], BOX_PAD
+    for w, h, b in measured:
+        if cur and x + w > W - 2 * m - BOX_PAD:
+            rows.append(cur)
+            cur, x = [], BOX_PAD
+        cur.append((w, h, b))
+        x += w + BOX_PAD
+    rows.append(cur)
+    box_h = sum(max(h for _, h, _ in r) for r in rows) + BOX_PAD * (len(rows) + 1)
+    return {"mode": "band", "rows": rows, "box_w": 0, "box_h": box_h,
+            "header_h": HEADER_H + box_h + 4}
+
+
+def draw_block(c, x, y, h, block):
+    """Draw one measured block with its top-left corner at (x, y)."""
+    kind = block[0]
+    c.setFillColorRGB(0.1, 0.1, 0.1)
+    if kind == "mono":
+        _, label, lines = block
+        ty = y - 9
+        if label:
+            c.setFont(CH_FONT, 8)
+            c.drawString(x + 4, ty, label)
+            ty -= 11
+        c.setFont(MONO, MONO_SIZE)
+        for t in lines:
+            c.drawString(x + 4, ty, t)
+            ty -= MONO_LEAD
+    elif kind == "note":
+        c.setFont(LYR_FONT, NOTE_SIZE)
+        for k, t in enumerate(block[1]):
+            c.drawString(x + 4, y - 9 - k * (NOTE_SIZE + 2), t)
+    elif kind == "image":
+        iw, ih = block[1].getSize()
+        c.drawImage(block[1], x + 4, y - h + 2, (h - 4) * iw / ih, h - 4, mask="auto")
+    elif kind == "diagrams":
+        dx = x + 2
+        for name, frets in block[1]:
+            dx = draw_diagram(c, dx, y - 2, name, frets, size=8)
+
+
+def draw_box(c, bl, W, H, m):
+    top = H - m
+    if bl["mode"] == "corner":
+        bx, by, bw, bh = W - m - bl["box_w"], top, bl["box_w"], bl["box_h"]
+    else:
+        bx, by, bw, bh = m, top - HEADER_H, W - 2 * m, bl["box_h"]
+    c.setStrokeColorRGB(0.75, 0.75, 0.75)
+    c.setLineWidth(0.5)
+    c.roundRect(bx - 2, by - bh, bw + 2, bh, 4, stroke=1, fill=0)
+    y = by - BOX_PAD
+    for row in bl["rows"]:
+        x = bx + BOX_PAD
+        for w, h, b in row:
+            draw_block(c, x, y, h, b)
+            x += w + BOX_PAD
+        y -= max(h for _, h, _ in row) + BOX_PAD
+
+
+def title_width(meta, ts):
+    return (pdfmetrics.stringWidth(meta.get("title", ""), CH_FONT, ts) + 8
+            + pdfmetrics.stringWidth("— " + meta.get("artist", ""), LYR_FONT, 12))
+
+
+def header_layout_blocks(meta, blocks, W, m):
+    """Header layout for a part page: the block box beside the title, or a band below."""
+    bl = box_layout(blocks, W, m, title_width(meta, 19))
+    return {"size": 8, "box_w": bl["box_w"], "two_rows": False, "header_h": bl["header_h"],
+            "title_size": 19, "box": bl}
 
 
 def header_layout(meta, diagrams, tab, W, m):
     """Decide how the header box fits beside the title: diagram size 9 down to 7, and
     if a tab plus diagrams still would not fit, put the diagrams on a second row under
     the tab (which makes the header taller). Returns a dict for draw_header/render."""
-    def title_w(ts):
-        return (pdfmetrics.stringWidth(meta.get("title", ""), CH_FONT, ts) + 8
-                + pdfmetrics.stringWidth("— " + meta.get("artist", ""), LYR_FONT, 12))
     tab_w = (max(pdfmetrics.stringWidth(t, MONO, 7.2) for t in tab) + 10) if tab else 0
-    fits = lambda box_w, ts: not box_w or W - m - box_w >= m + title_w(ts) + 10
+    fits = lambda box_w, ts: not box_w or W - m - box_w >= m + title_width(meta, ts) + 10
     # One row: shrink the diagrams first, then the title a step, before using two rows.
     for ts in (19, 18, 17):
         for size in (9, 8, 7):
@@ -479,7 +585,7 @@ def header_layout(meta, diagrams, tab, W, m):
             "title_size": 17}
 
 
-def draw_header(c, meta, diagrams, tab, W, H, m, hl=None):
+def draw_header(c, meta, diagrams, tab, W, H, m, hl=None, guide_prefix="", guide_suffix=""):
     hl = hl or header_layout(meta, diagrams, tab, W, m)
     top = H - m
     title = meta.get("title", "")
@@ -493,8 +599,9 @@ def draw_header(c, meta, diagrams, tab, W, H, m, hl=None):
     c.setFillColorRGB(0.3, 0.3, 0.3)
     c.drawString(m + tw + 8, top - 19, "— " + artist)
     guide = " · ".join(v for v in [
+        guide_prefix,
         ("Key " + meta["key"]) if "key" in meta else "",
-        meta.get("tuning", ""), meta.get("capo", "")] if v)
+        meta.get("tuning", ""), meta.get("capo", ""), guide_suffix] if v)
     c.setFillColorRGB(0, 0, 0)
     c.setFont(CH_FONT, 10.5)
     c.drawString(m, top - 37, guide)
@@ -516,6 +623,11 @@ def draw_header(c, meta, diagrams, tab, W, H, m, hl=None):
     c.setFillColorRGB(0.25, 0.25, 0.25)
     for i, line in enumerate(lines):
         c.drawString(m, top - 52 - i * (size + 1), line)
+
+    if hl.get("box"):
+        if hl["box"]["mode"] != "none":
+            draw_box(c, hl["box"], W, H, m)
+        return
 
     # right-hand box: diagrams + tab (diagrams drop to a second row when needed)
     if not diagrams and not tab:

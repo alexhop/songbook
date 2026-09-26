@@ -298,3 +298,44 @@ def test_layout_and_draw_section_cues(tmp_path):
     c.save()
     text = PdfReader(str(out)).pages[0].extract_text()
     assert "VERSE 1" in text and "groove A, quiet" in text and "crash and the ride" in text
+
+
+def test_box_layout_corner_and_band():
+    W, m = 612, 28
+    small = [("mono", "groove A", ["HH|x-x-x-x-|", "BD|o---o---|"])]
+    bl = songpage.box_layout(small, W, m, title_w=200)
+    assert bl["mode"] == "corner" and bl["header_h"] == songpage.HEADER_H
+    assert bl["box_w"] > 0
+    wide = [("mono", f"groove {k}", ["HH|x-x-x-x-|x-x-x-x-|x-x-x-x-|x-x-x-|"] * 3) for k in "ABCDEF"]
+    bl = songpage.box_layout(wide, W, m, title_w=200)
+    assert bl["mode"] == "band" and bl["box_w"] == 0
+    assert bl["header_h"] > songpage.HEADER_H
+    assert len(bl["rows"]) >= 2
+    assert songpage.box_layout([], W, m, 200)["mode"] == "none"
+
+
+def test_measure_block_kinds(tmp_path):
+    from PIL import Image
+    png = tmp_path / "riff.png"
+    Image.new("RGBA", (200, 50), (0, 0, 0, 255)).save(png)
+    w, h, b = songpage.measure_block(("image", str(png)))
+    assert h == 52 and w > h and b[0] == "image"
+    w, h, b = songpage.measure_block(("note", "a note that is long enough to wrap onto a second line for sure"))
+    assert b[0] == "note" and len(b[1]) >= 2 and h > 12
+    w, h, b = songpage.measure_block(("diagrams", [("D7", "xx0212"), ("G", "320003")]))
+    assert w > 2 * songpage.diagram_width(8)
+
+
+def test_draw_header_with_blocks(tmp_path):
+    from reportlab.pdfgen import canvas
+    meta = {"title": "T", "artist": "A", "key": "G", "structure": "verse – chorus"}
+    blocks = [("mono", "groove A", ["HH|x-x-x-x-|"]), ("note", "LH roots")]
+    hl = songpage.header_layout_blocks(meta, blocks, 612, 28)
+    out = tmp_path / "hdr.pdf"
+    c = canvas.Canvas(str(out), pagesize=(612, 792))
+    songpage.draw_header(c, meta, [], [], 612, 792, 28, hl, guide_prefix="DRUMS", guide_suffix="Patch 1 · kit")
+    c.showPage()
+    c.save()
+    text = PdfReader(str(out)).pages[0].extract_text()
+    assert "DRUMS" in text and "Key G" in text and "Patch 1" in text
+    assert "groove A" in text and "LH roots" in text
