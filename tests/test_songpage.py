@@ -379,3 +379,41 @@ def test_part_orchid_override(tmp_path):
 def test_render_without_part_is_unchanged(tmp_path):
     res = songpage.render(FIXTURE, str(tmp_path / "classic.pdf"))
     assert res.part is None and res.fits
+
+
+def test_orchid_override_shows_legend_for_base_part(tmp_path):
+    chart = write_chart(tmp_path, """
+    # title: T
+    # key: G
+
+    [Verse 1]
+    G        D7
+    one two three
+
+    @part guitar1
+    # orchid: yes
+    """)
+    g1 = songpage.PartSpec("guitar1", "Guitar 1", base=True)
+    songpage.render(str(chart), str(tmp_path / "g1.pdf"), part=g1)
+    text = PdfReader(str(tmp_path / "g1.pdf")).pages[0].extract_text()
+    assert "Orchid key: G" in text
+
+
+def test_continuation_header_shows_part_title(tmp_path):
+    chart = write_chart(tmp_path, """
+    # title: T
+    # artist: A
+    # key: G
+    # spread: yes
+
+    [Verse 1]
+    G        D7
+    one two three
+
+    @part drums
+    [*] groove A
+    """)
+    drums = songpage.PartSpec("drums", "Drums", chords=False)
+    songpage.render(str(chart), str(tmp_path / "drums.pdf"), part=drums)
+    text = PdfReader(str(tmp_path / "drums.pdf")).pages[1].extract_text()
+    assert "Drums" in text and "A" in text

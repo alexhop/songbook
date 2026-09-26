@@ -751,14 +751,19 @@ class RenderResult:
 SIZES = (13, 12.5, 12, 11.5, 11, 10.5, 10, 9.5)
 
 
+def want_orchid(overlay, spec):
+    """Whether the Orchid legend should show: the book's PartSpec default, overridable
+    per-song by the part's own `# orchid:` line."""
+    if overlay and "orchid" in overlay.meta:
+        return truthy(overlay.meta["orchid"])
+    return spec.orchid
+
+
 def part_blocks(chart, overlay, spec):
     """Header-box blocks for one part: the Orchid legend for keys, the chart's own
     diagrams and tab for the base part, then the overlay's diagrams and blocks."""
     blocks = []
-    want_legend = spec.orchid
-    if overlay and "orchid" in overlay.meta:
-        want_legend = truthy(overlay.meta["orchid"])
-    if want_legend:
+    if want_orchid(overlay, spec):
         key = chart.meta.get("key", "")
         lines = orchid.legend_lines(key, chord_tokens(chart.items))
         if lines:
@@ -799,13 +804,13 @@ def render(chart, out, sizes=SIZES, part=None):
     else:
         prefix = part.title.upper()
         suffix = patch_label(overlay.meta.get("patch", "") if overlay else "", part.patches)
-        blocks = part_blocks(ch, overlay, part)
-        classic = part.base and not part.orchid and not (overlay and (overlay.blocks or overlay.diagrams))
+        classic = part.base and not want_orchid(overlay, part) \
+            and not (overlay and (overlay.blocks or overlay.diagrams))
         if classic:
             hl = header_layout(meta, diagrams, tab, W, m)
         else:
             diagrams, tab = [], []
-            hl = header_layout_blocks(meta, blocks, W, m)
+            hl = header_layout_blocks(meta, part_blocks(ch, overlay, part), W, m)
     header_h = hl["header_h"]
     gutter = 18
     colw = (W - 2 * m - gutter) / 2
