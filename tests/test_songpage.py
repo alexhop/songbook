@@ -358,13 +358,23 @@ def test_guide_size_shrinks_to_fit():
     from reportlab.pdfbase import pdfmetrics
     guide = " · ".join(["DRUMS", "Key G", "Standard tuning", "No capo",
                          "Patch 2 · a very long patch name for the drum kit that keeps going"])
-    avail = 400  # too narrow for 10.5/9.5pt but wide enough at 9pt
-    size = songpage.guide_size(guide, avail)
-    assert size == 9
-    assert pdfmetrics.stringWidth(guide, songpage.CH_FONT, size) <= avail
+
+    # A width computed from the guide's own 9pt rendering always selects 9pt, whichever
+    # font resolve_fonts() picked (DejaVu on Linux CI, Arial Narrow locally, or the
+    # Helvetica fallback).
+    avail = pdfmetrics.stringWidth(guide, songpage.CH_FONT, 9) + 1
+    assert songpage.guide_size(guide, avail) == 9
+
+    # Effectively unlimited space keeps the largest size on the ladder.
+    assert songpage.guide_size(guide, 100_000) == 10.5
 
     # Below the 8.5pt floor, guide_size gives up and returns 8.5 anyway.
-    assert songpage.guide_size(guide, 50) == 8.5
+    assert songpage.guide_size(guide, 1) == 8.5
+
+    # Whatever size comes back, either it fits or it's the documented floor.
+    for probe_avail in (1, 50, 200, avail, 100_000):
+        size = songpage.guide_size(guide, probe_avail)
+        assert size == 8.5 or pdfmetrics.stringWidth(guide, songpage.CH_FONT, size) <= probe_avail
 
 
 def test_guide_line_fits_beside_corner_box():
@@ -382,7 +392,11 @@ def test_guide_line_fits_beside_corner_box():
     guide = " · ".join(["DRUMS", "Key G", "Standard tuning", "No capo",
                          "Patch 2 · a very long patch name for the drum kit that keeps going"])
     size = songpage.guide_size(guide, avail)
-    assert pdfmetrics.stringWidth(guide, songpage.CH_FONT, size) <= avail
+    assert size == 8.5 or pdfmetrics.stringWidth(guide, songpage.CH_FONT, size) <= avail
+
+    # A short guide always keeps the largest size, regardless of the box width.
+    short_guide = "DRUMS · Key G"
+    assert songpage.guide_size(short_guide, avail) == 10.5
 
 
 def test_render_part_pages(tmp_path):
