@@ -12,7 +12,7 @@ everything specific to that book (who plays, the song list, decisions, status).
 build.py  songpage.py  fetch_ug.py     the tool
 tests/                                 pytest; fixtures under tests/fixtures/book
 BOOK.md                                names the active book, imports its CLAUDE.md
-books/<name>/book.toml                 title, subtitle, logo, footer mark, group order
+books/<name>/book.toml                 title, subtitle, dedication, logo, footer mark, group order
 books/<name>/songs/*.txt               one chart per song
 books/<name>/assets/                   logo and any other artwork
 books/<name>/CLAUDE.md                 that book's instructions and status
@@ -51,6 +51,13 @@ everything with `.venv/bin/python`.
   grouped by `# group:`, and merges them into `build/<name>/songbook.pdf`. It prints one
   row per song (slug, title, group, start page, lyric size, orientation, fit) and exits
   1 if any song does not fit. With no argument it builds the book named in `BOOK.md`.
+- **Band books.** A `[[parts]]` list in `book.toml` (name, title, chords, default_cue,
+  orchid, intro, patches, guitar) makes `build.py` write one PDF per part with a setup page
+  after the cover and identical page numbers in every book; the first part is the base
+  and shows the chart's own diagrams and tab. Charts append `@part <name>` blocks with
+  `# patch:`, `@tab`/`@grid` (labelled monospace), `@diagram`, `@note`, `@image`, and
+  `[Section] cue` lines (`[*]` fallback). `orchid.py` computes the keys legend from
+  `# key:` and the chord tokens. `--part <name>` builds one book.
 - **Group order** is the `groups` list in `book.toml`; unknown groups go last under
   "Other".
 - **Contents order.** Artist first, sorted by artist then title within each group,
@@ -106,8 +113,9 @@ everything with `.venv/bin/python`.
 
 @diagram Asus4 x00230        <- frets low string → high, x = mute, 0 = open; shapes above
                                 the 4th fret draw from their lowest fret with an "Nfr" label
-@tab                         <- tab block for the header box; ends at a blank line.
-                                Only the strings the lick uses: drop empty low-E / A lines
+@tab                         <- tab block for the header box; ends at a blank line or the
+                                next line starting with [, @ or #. Only the strings the
+                                lick uses: drop empty low-E / A lines
 e|--0-----0-----0-----0---|
 B|--2--h3----p2--h3----p2-|
 ...
@@ -116,6 +124,8 @@ B|--2--h3----p2--h3----p2-|
 E                               A   Asus4  A  Asus4  A     <- chord line (positions align with lyric below)
 lyric line goes here                                       <- lyric line
 E   |   E   A  Asus4  A  Asus4  A   |   (x2)              <- chord line with no lyric = chord-only line
+
+@part drums                  <- overlay for one instrument; see README "Band books"
 ```
 
 - A line is a chord line if every token parses as a chord (or `|`, `(x2)`, `N.C.`).

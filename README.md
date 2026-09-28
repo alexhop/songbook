@@ -27,7 +27,8 @@ open build/example/songbook.pdf
 ```
 
 `build.py` prints one line per song with its page number and lyric size, and fails if
-a song did not fit on its page.
+a song did not fit on its page. Add `--part <name>` to build a single instrument's
+book from a `book.toml` with a `[[parts]]` list (see "Band books").
 
 ## Make your own book
 
@@ -41,6 +42,7 @@ own charts:
    title = "Our Songbook"
    cover_word = "Songbook"          # printed under the logo on the cover
    subtitle = "Songs for the porch"
+   dedication = "For everyone who ever pulled up a chair."   # optional, printed on the cover
    logo = "assets/logo.png"         # PNG with transparency; delete the line for a text cover
    footer_mark = "auto"             # small logo in each page's footer: "auto", "none", or a path
    groups = ["Singalongs", "Ballads"]   # order of the contents sections
@@ -89,8 +91,8 @@ Oh! Susanna, oh don't you cry for me
   `G   |   C   |   D7   |   G   |   (x2)`.
 - `@diagram NAME frets` adds a chord box to the header. Frets run low string to high,
   `x` mutes and `0` is open: `@diagram D7 xx0212`.
-- `@tab` starts a tab block for the header box and ends at a blank line. Include only
-  the strings the lick uses.
+- `@tab` starts a tab block for the header box and ends at a blank line or the next line
+  starting with `[`, `@` or `#`. Include only the strings the lick uses.
 - Chords align by column, so use spaces, not tabs, and keep chord names above the
   syllable they land on.
 
@@ -102,6 +104,70 @@ Per-song switches, all off by default:
 | `# spread: yes` | two facing pages; a blank is inserted so it opens flat |
 | `# chorus-markers: yes` | every chorus after the first prints as a one-line "as before" cue |
 | `# min-size: 12` | stop shrinking the lyrics at this size and warn instead |
+
+## Band books
+
+A book can print one PDF per instrument from the same charts. List the parts in
+`book.toml`; the first one is the base part and shows the chart's own diagrams and tab:
+
+```toml
+[[parts]]
+name = "guitar1"
+title = "Guitar 1"
+chords = true
+
+[[parts]]
+name = "keys"
+title = "Keys"
+chords = true          # print the chord lines
+orchid = true          # print an Orchid legend: modifier and key per chord
+intro = "parts/keys.md"          # setup notes, printed after the cover
+patches = ["piano", "organ"]     # numbered patch bank for the setup page
+guitar = false                   # drop tuning/capo from the guide line
+
+[[parts]]
+name = "drums"
+title = "Drums"
+chords = false                   # lyrics only, as the roadmap
+default_cue = "straight time"
+guitar = false
+```
+
+`guitar` defaults to true. Set it `false` for a part that isn't a fretted instrument
+(keys, bass, drums, vocals) so its guide line skips `# tuning:`/`# capo:`, which don't
+mean anything there; it still shows the part title, `Key …` and the patch label.
+
+Each chart then appends one `@part` block per instrument. A part block holds that
+instrument's header material and one cue per section:
+
+```
+@part drums
+# patch: acoustic kit
+@grid groove A
+HH|x-x-x-x-|x-x-x-x-|
+SD|----o---|----o---|
+BD|o---o---|o-o-o---|
+[*] groove A
+[Chorus] groove B, crash on 1
+
+@part keys
+# patch: organ
+@note LH roots, RH pad
+[Chorus] organ, whole notes
+```
+
+Blocks: `@tab label` and `@grid label` (monospace, end at a blank line or the next line
+starting with `[`, `@` or `#`), `@diagram`, `@note text` and `@image file.png`.
+`[Section] cue` matches the body section of that name; `[*]` is the fallback. A part
+with no block still gets a page with the lyrics and the book's `default_cue`. A
+`[Section]` cue with no text after it (`[Chorus]` with nothing following) suppresses
+the default cue for that section rather than falling back to it. `# orchid: no` in a
+part turns the legend off for one song.
+
+`build.py books/<name>` writes `build/<name>/<part>.pdf` for every part: a cover naming
+the part, a setup page (the intro text and the patch list), the contents, the songs
+and a back page. Song order and page numbers are identical in every book. Build one
+book with `build.py books/<name> --part drums`.
 
 ## How pages are laid out
 

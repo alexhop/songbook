@@ -1,0 +1,28 @@
+title = "Fixture Band Book"
+cover_word = "Band book"
+subtitle = "Parts for the tests"
+groups = ["Mellow", "Special"]
+
+[[parts]]
+name = "guitar1"
+title = "Guitar 1"
+chords = true
+
+[[parts]]
+name = "keys"
+title = "Keys"
+chords = true
+orchid = true
+intro = "parts/keys.md"
+patches = ["piano", "organ"]
+
+[[parts]]
+name = "drums"
+title = "Drums"
+chords = false
+default_cue = "straight time"
+
+[[parts]]
+name = "vocals"
+title = "Vocals"
+chords = false

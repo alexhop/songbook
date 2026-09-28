@@ -64,3 +64,11 @@ C            G
 Oh! Susanna, oh don't you cry for me
 G                                  D7        G
 I've come from Alabama with my banjo on my knee
+
+@part drums
+@grid two-step
+HH|x-x-x-x-|
+SD|----o---|
+BD|o---o---|
+[*] two-step, brushes
+[Chorus] add the ride

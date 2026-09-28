@@ -18,12 +18,17 @@ Optional metadata: # group: <toc category>, # landscape: yes, # spread: yes (two
 pages), # chorus-markers: yes (repeated choruses print as a one-line cue),
 # min-size: 12 (floor for the auto-shrink).
 
+A chart can append @part <name> overlay blocks for a band book's per-instrument pages
+(header material and per-section cues); render(..., part=PartSpec) renders the chart
+through one such part instead of its own base content.
+
 Layout: letter, header block, two columns, auto-shrinks lyric size to fit one page.
 """
 import os
 import re
 import sys
-from dataclasses import dataclass
+import orchid
+from dataclasses import dataclass, field
 from reportlab.lib.pagesizes import letter, landscape as _landscape
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
@@ -85,24 +90,89 @@ def is_placeholder(s):
     return bool(t) and set(t) <= {"~"}
 
 
-def parse(path):
-    meta, diagrams, tab, items = {}, [], [], []
+@dataclass
+class Part:
+    """One instrument's overlay on a chart: its metadata, header blocks and cues."""
+    name: str
+    meta: dict = field(default_factory=dict)
+    blocks: list = field(default_factory=list)   # ("mono", label, lines) | ("note", text) | ("image", path)
+    diagrams: list = field(default_factory=list)
+    cues: dict = field(default_factory=dict)      # cue_key(section) -> text; "*" is the default
+
+
+@dataclass
+class Chart:
+    meta: dict
+    diagrams: list
+    tab: list
+    items: list
+    parts: dict = field(default_factory=dict)   # name -> Part, in file order
+
+
+SECTION_RE = re.compile(r"^\[(.+?)\](.*)$")
+
+
+def cue_key(name):
+    """Sections match cues by their label alone: 'Verse 3 – quiet' and 'Chorus ×2' match
+    the cues [Verse 3] and [Chorus]."""
+    label = re.split(r"\s+[–—-]\s+", name.strip(), maxsplit=1)[0]
+    label = re.sub(r"\s*(×\d+|\(x\d+\))$", "", label)
+    return label.lower()
+
+
+def parse_chart(path):
+    meta, diagrams, tab, items, parts = {}, [], [], [], {}
+    part = None
     lines = open(path, encoding="utf-8").read().splitlines()
     i = 0
     while i < len(lines):
         raw = lines[i].rstrip("\n")
         s = raw.strip()
-        if s.startswith("#"):
+        if s.startswith("@part"):
+            name = s[len("@part"):].strip()
+            if not name:
+                raise ValueError(f"{path}:{i + 1}: @part needs a name")
+            part = parts.setdefault(name, Part(name))
+        elif s.startswith("#"):
             k, _, v = s[1:].partition(":")
-            meta[k.strip().lower()] = v.strip()
+            (part.meta if part else meta)[k.strip().lower()] = v.strip()
         elif s.startswith("@diagram"):
             _, name, frets = s.split(None, 2)
-            diagrams.append((name, frets))
-        elif s == "@tab":
+            (part.diagrams if part else diagrams).append((name, frets))
+        elif s.startswith(("@tab", "@grid")):
+            label = s.split(None, 1)[1].strip() if " " in s else ""
+            block = []
             i += 1
-            while i < len(lines) and lines[i].strip():
-                tab.append(lines[i].rstrip())
+            while i < len(lines) and lines[i].strip() \
+                    and not lines[i].lstrip().startswith(("[", "@", "#")):
+                block.append(lines[i].rstrip())
                 i += 1
+            if part:
+                part.blocks.append(("mono", label, block))
+            else:
+                tab.extend(block)
+            # If block ended at a special line, don't increment i again; continue to process it
+            if i < len(lines) and lines[i].lstrip().startswith(("[", "@", "#")):
+                continue
+            # If block ended at blank line, skip it
+            if i < len(lines) and not lines[i].strip():
+                i += 1
+            continue
+        elif s.startswith(("@note", "@image")):
+            if not part:
+                raise ValueError(f"{path}:{i + 1}: {s.split()[0]} is only valid inside @part")
+            kind, _, text = s.partition(" ")
+            text = text.strip()
+            if not text:
+                raise ValueError(f"{path}:{i + 1}: {kind} needs text")
+            if kind == "@image":
+                text = os.path.join(os.path.dirname(os.path.abspath(path)), text)
+            part.blocks.append((kind[1:], text))
+        elif part:
+            if m := SECTION_RE.match(s):
+                part.cues[cue_key(m.group(1))] = m.group(2).strip()
+            elif s:
+                raise ValueError(f"{path}:{i + 1}: unexpected line in @part {part.name}: {s}")
         elif re.match(r"^\[.+\]$", s):
             items.append(("section", s[1:-1]))
         elif not s:
@@ -118,7 +188,13 @@ def parse(path):
         else:
             items.append(("pair", [], raw))
         i += 1
-    return meta, diagrams, tab, items
+    return Chart(meta, diagrams, tab, items, parts)
+
+
+def parse(path):
+    """The chart's own part as a four-tuple (meta, diagrams, tab, items)."""
+    ch = parse_chart(path)
+    return ch.meta, ch.diagrams, ch.tab, ch.items
 
 
 CHORUS_RE = re.compile(r"^chorus\b", re.IGNORECASE)
@@ -137,6 +213,52 @@ def collapse_repeated_choruses(items):
         elif not skipping:
             out.append(it)
     return out
+
+
+@dataclass
+class PartSpec:
+    """How a book renders one instrument's part (from book.toml's [[parts]])."""
+    name: str
+    title: str
+    chords: bool = True
+    default_cue: str = ""
+    orchid: bool = False
+    patches: list = field(default_factory=list)
+    intro: str | None = None
+    base: bool = False   # the book's first part: it also shows the chart's own diagrams and tab
+    guitar: bool = True  # False drops tuning/capo from the guide line (a non-fretted part)
+
+
+def part_items(items, part, spec):
+    """The shared body seen through one part: sections carry that part's cue, chord
+    lines are kept or dropped per the part."""
+    cues = part.cues if part else {}
+    out = []
+    for it in items:
+        if it[0] == "section":
+            cue = cues.get(cue_key(it[1]), cues.get("*", spec.default_cue))
+            out.append(("section", it[1], cue))
+        elif it[0] == "pair":
+            out.append(it if spec.chords else ("pair", [], it[2]))
+        elif spec.chords:
+            out.append(it)
+    return out
+
+
+def chord_tokens(items):
+    return [name for it in items if it[0] in ("pair", "chords") for _, name in it[1]]
+
+
+def patch_label(patch, bank):
+    """'organ' with bank [piano, organ] -> 'Patch 2 · organ'; a name not in the bank
+    prints as written. Only the text before a semicolon is matched."""
+    if not patch:
+        return ""
+    first = patch.split(";")[0].strip().lower()
+    for n, name in enumerate(bank, 1):
+        if first == name.lower():
+            return f"Patch {n} · {patch}"
+    return "Patch: " + patch
 
 
 # ---------- layout ----------
@@ -259,7 +381,14 @@ def layout(st, items, colw, colh, gutter=18, max_cols=2):
     blocks = []
     for it in items:
         if it[0] in ("section", "marker"):
-            blocks.append({"kind": it[0], "name": it[1], "h": st.sec_h})
+            cue = it[2] if len(it) > 2 else ""
+            cue_lines = None
+            if cue:
+                label_w = pdfmetrics.stringWidth(it[1].upper() + "  ", CH_FONT, 8.5)
+                if label_w + pdfmetrics.stringWidth("· " + cue, LYR_FONT, 8.5) > colw:
+                    cue_lines = wrap_words(cue, LYR_FONT, 8.5, colw)
+            h = st.sec_h + (len(cue_lines) * 10 if cue_lines else 0)
+            blocks.append({"kind": it[0], "name": it[1], "cue": cue, "cue_lines": cue_lines, "h": h})
         else:
             placeholder = is_placeholder(it[2])
             vis = wrap_line(st, it[1], it[2], colw, placeholder, overflow=gutter - 6)
@@ -329,17 +458,123 @@ def draw_diagram(c, x, y, name, frets, size=9):
 
 HEADER_H = 72
 DIAGRAM_ROW_H = 52
+MONO_SIZE, MONO_LEAD = 7.2, 8.4
+NOTE_SIZE, NOTE_W = 8, 150
+BOX_PAD = 6
+CORNER_H = 62
+
+
+def measure_block(block):
+    """(width, height, drawable) for one header-box block. Notes are wrapped and images
+    opened here so drawing needs no further measuring."""
+    kind = block[0]
+    if kind == "mono":
+        _, label, lines = block
+        widths = [pdfmetrics.stringWidth(t, MONO, MONO_SIZE) for t in lines]
+        widths.append(pdfmetrics.stringWidth(label, CH_FONT, 8) if label else 0)
+        return max(widths) + 8, MONO_LEAD * len(lines) + (11 if label else 0) + 6, block
+    if kind == "note":
+        lines = wrap_words(block[1], LYR_FONT, NOTE_SIZE, NOTE_W)
+        w = max(pdfmetrics.stringWidth(t, LYR_FONT, NOTE_SIZE) for t in lines) + 8
+        return w, (NOTE_SIZE + 2) * len(lines) + 6, ("note", lines)
+    if kind == "image":
+        from reportlab.lib.utils import ImageReader
+        img = ImageReader(block[1])
+        iw, ih = img.getSize()
+        return 52 * iw / ih + 8, 52, ("image", img)
+    if kind == "diagrams":
+        return diagram_width(8) * len(block[1]) + 6, 56, block
+    raise ValueError(f"unknown header block {kind}")
+
+
+def box_layout(blocks, W, m, title_w):
+    """Place header blocks in one row beside the title when they fit there, otherwise
+    in rows across a full-width band under the header."""
+    measured = [measure_block(b) for b in blocks]
+    if not measured:
+        return {"mode": "none", "rows": [], "box_w": 0, "box_h": 0, "header_h": HEADER_H}
+    row_w = sum(w for w, _, _ in measured) + BOX_PAD * (len(measured) + 1)
+    row_h = max(h for _, h, _ in measured) + BOX_PAD
+    if row_h <= CORNER_H and W - m - row_w >= m + title_w + 10:
+        return {"mode": "corner", "rows": [measured], "box_w": row_w, "box_h": CORNER_H,
+                "header_h": HEADER_H}
+    rows, cur, x = [], [], BOX_PAD
+    for w, h, b in measured:
+        if cur and x + w > W - 2 * m - BOX_PAD:
+            rows.append(cur)
+            cur, x = [], BOX_PAD
+        cur.append((w, h, b))
+        x += w + BOX_PAD
+    rows.append(cur)
+    box_h = sum(max(h for _, h, _ in r) for r in rows) + BOX_PAD * (len(rows) + 1)
+    return {"mode": "band", "rows": rows, "box_w": 0, "box_h": box_h,
+            "header_h": HEADER_H + box_h + 4}
+
+
+def draw_block(c, x, y, h, block):
+    """Draw one measured block with its top-left corner at (x, y)."""
+    kind = block[0]
+    c.setFillColorRGB(0.1, 0.1, 0.1)
+    if kind == "mono":
+        _, label, lines = block
+        ty = y - 9
+        if label:
+            c.setFont(CH_FONT, 8)
+            c.drawString(x + 4, ty, label)
+            ty -= 11
+        c.setFont(MONO, MONO_SIZE)
+        for t in lines:
+            c.drawString(x + 4, ty, t)
+            ty -= MONO_LEAD
+    elif kind == "note":
+        c.setFont(LYR_FONT, NOTE_SIZE)
+        for k, t in enumerate(block[1]):
+            c.drawString(x + 4, y - 9 - k * (NOTE_SIZE + 2), t)
+    elif kind == "image":
+        iw, ih = block[1].getSize()
+        c.drawImage(block[1], x + 4, y - h + 2, (h - 4) * iw / ih, h - 4, mask="auto")
+    elif kind == "diagrams":
+        dx = x + 2
+        for name, frets in block[1]:
+            dx = draw_diagram(c, dx, y - 2, name, frets, size=8)
+
+
+def draw_box(c, bl, W, H, m):
+    top = H - m
+    if bl["mode"] == "corner":
+        bx, by, bw, bh = W - m - bl["box_w"], top, bl["box_w"], bl["box_h"]
+    else:
+        bx, by, bw, bh = m, top - HEADER_H, W - 2 * m, bl["box_h"]
+    c.setStrokeColorRGB(0.75, 0.75, 0.75)
+    c.setLineWidth(0.5)
+    c.roundRect(bx - 2, by - bh, bw + 2, bh, 4, stroke=1, fill=0)
+    y = by - BOX_PAD
+    for row in bl["rows"]:
+        x = bx + BOX_PAD
+        for w, h, b in row:
+            draw_block(c, x, y, h, b)
+            x += w + BOX_PAD
+        y -= max(h for _, h, _ in row) + BOX_PAD
+
+
+def title_width(meta, ts):
+    return (pdfmetrics.stringWidth(meta.get("title", ""), CH_FONT, ts) + 8
+            + pdfmetrics.stringWidth("— " + meta.get("artist", ""), LYR_FONT, 12))
+
+
+def header_layout_blocks(meta, blocks, W, m):
+    """Header layout for a part page: the block box beside the title, or a band below."""
+    bl = box_layout(blocks, W, m, title_width(meta, 19))
+    return {"size": 8, "box_w": bl["box_w"], "two_rows": False, "header_h": bl["header_h"],
+            "title_size": 19, "box": bl}
 
 
 def header_layout(meta, diagrams, tab, W, m):
     """Decide how the header box fits beside the title: diagram size 9 down to 7, and
     if a tab plus diagrams still would not fit, put the diagrams on a second row under
     the tab (which makes the header taller). Returns a dict for draw_header/render."""
-    def title_w(ts):
-        return (pdfmetrics.stringWidth(meta.get("title", ""), CH_FONT, ts) + 8
-                + pdfmetrics.stringWidth("— " + meta.get("artist", ""), LYR_FONT, 12))
     tab_w = (max(pdfmetrics.stringWidth(t, MONO, 7.2) for t in tab) + 10) if tab else 0
-    fits = lambda box_w, ts: not box_w or W - m - box_w >= m + title_w(ts) + 10
+    fits = lambda box_w, ts: not box_w or W - m - box_w >= m + title_width(meta, ts) + 10
     # One row: shrink the diagrams first, then the title a step, before using two rows.
     for ts in (19, 18, 17):
         for size in (9, 8, 7):
@@ -359,7 +594,8 @@ def header_layout(meta, diagrams, tab, W, m):
             "title_size": 17}
 
 
-def draw_header(c, meta, diagrams, tab, W, H, m, hl=None):
+def draw_header(c, meta, diagrams, tab, W, H, m, hl=None, guide_prefix="", guide_suffix="",
+                 guitar=True):
     hl = hl or header_layout(meta, diagrams, tab, W, m)
     top = H - m
     title = meta.get("title", "")
@@ -372,19 +608,26 @@ def draw_header(c, meta, diagrams, tab, W, H, m, hl=None):
     c.setFont(LYR_FONT, 12)
     c.setFillColorRGB(0.3, 0.3, 0.3)
     c.drawString(m + tw + 8, top - 19, "— " + artist)
-    guide = " · ".join(v for v in [
-        ("Key " + meta["key"]) if "key" in meta else "",
-        meta.get("tuning", ""), meta.get("capo", "")] if v)
-    c.setFillColorRGB(0, 0, 0)
-    c.setFont(CH_FONT, 10.5)
-    c.drawString(m, top - 37, guide)
     box_w = hl["box_w"]
     bx, by = W - m - box_w, top
+    avail = (bx - 8 if box_w else W - m) - m
+
+    # A part prefix/patch suffix can push the guide line wide enough to run under the
+    # header box, so it shrinks the same way the form line below does. tuning/capo are
+    # guitar-specific and dropped for a part that isn't a fretted instrument.
+    guide = " · ".join(v for v in [
+        guide_prefix,
+        ("Key " + meta["key"]) if "key" in meta else "",
+        meta.get("tuning", "") if guitar else "",
+        meta.get("capo", "") if guitar else "",
+        guide_suffix] if v)
+    c.setFillColorRGB(0, 0, 0)
+    c.setFont(CH_FONT, guide_size(guide, avail))
+    c.drawString(m, top - 37, guide)
 
     # The form line shrinks (down to 8pt) and then wraps onto a second line rather than
     # run under the header box.
     form = "Form:  " + meta.get("structure", "")
-    avail = (bx - 8 if box_w else W - m) - m
     for size in (9.5, 9, 8.5, 8):
         lines = wrap_words(form, LYR_FONT, size, avail)
         if len(lines) <= 2:
@@ -396,6 +639,11 @@ def draw_header(c, meta, diagrams, tab, W, H, m, hl=None):
     c.setFillColorRGB(0.25, 0.25, 0.25)
     for i, line in enumerate(lines):
         c.drawString(m, top - 52 - i * (size + 1), line)
+
+    if hl.get("box"):
+        if hl["box"]["mode"] != "none":
+            draw_box(c, hl["box"], W, H, m)
+        return
 
     # right-hand box: diagrams + tab (diagrams drop to a second row when needed)
     if not diagrams and not tab:
@@ -422,6 +670,15 @@ def draw_header(c, meta, diagrams, tab, W, H, m, hl=None):
     c.roundRect(bx - 2, top - box_h, box_w + 2, box_h, 4, stroke=1, fill=0)
 
 
+def guide_size(guide, avail):
+    """Largest size in (10.5, 10, 9.5, 9, 8.5) at which the guide line clears avail; 8.5
+    (unshrunk further) if even that overruns, since the fix then belongs in the chart."""
+    for size in (10.5, 10, 9.5, 9, 8.5):
+        if pdfmetrics.stringWidth(guide, CH_FONT, size) <= avail:
+            return size
+    return 8.5
+
+
 def wrap_words(text, font, size, width):
     """Greedy word wrap by measured width; a word wider than the line stands alone."""
     lines, cur = [], ""
@@ -437,14 +694,15 @@ def wrap_words(text, font, size, width):
     return lines
 
 
-def draw_continuation_header(c, meta, W, H, m):
+def draw_continuation_header(c, meta, W, H, m, part_title=""):
     """Slim header for the second page of a spread."""
     top = H - m
     c.setFillColorRGB(0.3, 0.3, 0.3)
     c.setFont(CH_FONT, 12)
     c.drawString(m, top - 14, meta.get("title", "") + "  (continued)")
     c.setFont(LYR_FONT, 9.5)
-    c.drawRightString(W - m, top - 14, meta.get("artist", ""))
+    right = " · ".join(v for v in [part_title, meta.get("artist", "")] if v)
+    c.drawRightString(W - m, top - 14, right)
     c.setStrokeColorRGB(0.8, 0.8, 0.8)
     c.setLineWidth(0.5)
     c.line(m, top - 20, W - m, top - 20)
@@ -463,6 +721,15 @@ def draw_columns(c, st, cols, x0, y0, colw, gutter):
                     name += "  (AS BEFORE)"
                 c.drawString(cx, y - 9, name)
                 nw = pdfmetrics.stringWidth(name, CH_FONT, 8.5)
+                if b.get("cue"):
+                    c.setFont(LYR_FONT, 8.5)
+                    c.setFillColorRGB(0.45, 0.45, 0.45)
+                    if b["cue_lines"] is None:
+                        c.drawString(cx + nw + 6, y - 9, "· " + b["cue"])
+                        nw += 6 + pdfmetrics.stringWidth("· " + b["cue"], LYR_FONT, 8.5)
+                    else:
+                        for k, line in enumerate(b["cue_lines"]):
+                            c.drawString(cx, y - 9 - 10 * (k + 1), line)
                 c.setStrokeColorRGB(0.8, 0.8, 0.8)
                 c.setLineWidth(0.5)
                 c.line(cx + nw + 6, y - 6, cx + colw, y - 6)
@@ -502,15 +769,49 @@ class RenderResult:
     landscape: bool
     pages: int
     meta: dict
+    part: str | None = None
 
 
 SIZES = (13, 12.5, 12, 11.5, 11, 10.5, 10, 9.5)
 
 
-def render(chart, out, sizes=SIZES):
+def want_orchid(overlay, spec):
+    """Whether the Orchid legend should show: the book's PartSpec default, overridable
+    per-song by the part's own `# orchid:` line."""
+    if overlay and "orchid" in overlay.meta:
+        return truthy(overlay.meta["orchid"])
+    return spec.orchid
+
+
+def part_blocks(chart, overlay, spec):
+    """Header-box blocks for one part: the Orchid legend for keys, the chart's own
+    diagrams and tab for the base part, then the overlay's diagrams and blocks."""
+    blocks = []
+    if want_orchid(overlay, spec):
+        key = chart.meta.get("key", "")
+        lines = orchid.legend_lines(key, chord_tokens(chart.items))
+        if lines:
+            blocks.append(("mono", "Orchid key: " + key, lines))
+    if spec.base:
+        if chart.diagrams:
+            blocks.append(("diagrams", chart.diagrams))
+        if chart.tab:
+            blocks.append(("mono", "", chart.tab))
+    if overlay:
+        if overlay.diagrams:
+            blocks.append(("diagrams", overlay.diagrams))
+        blocks.extend(overlay.blocks)
+    return blocks
+
+
+def render(chart, out, sizes=SIZES, part=None):
     """Render one chart to a PDF of one page, or two facing pages with `# spread: yes`.
-    Other metadata options: landscape, chorus-markers, min-size (auto-shrink floor)."""
-    meta, diagrams, tab, items = parse(chart)
+    With `part` (a PartSpec) the page shows the body through that part: its cues, its
+    header blocks, chord lines only if the part wants them."""
+    ch = parse_chart(chart)
+    meta = ch.meta
+    overlay = ch.parts.get(part.name) if part else None
+    items = ch.items if part is None else part_items(ch.items, overlay, part)
     use_landscape = truthy(meta.get("landscape"))
     pages = 2 if truthy(meta.get("spread")) else 1
     if truthy(meta.get("chorus-markers")):
@@ -521,7 +822,19 @@ def render(chart, out, sizes=SIZES):
     pagesize = _landscape(letter) if use_landscape else letter
     W, H = pagesize
     m = 28
-    hl = header_layout(meta, diagrams, tab, W, m)
+    diagrams, tab, prefix, suffix = ch.diagrams, ch.tab, "", ""
+    if part is None:
+        hl = header_layout(meta, diagrams, tab, W, m)
+    else:
+        prefix = part.title.upper()
+        suffix = patch_label(overlay.meta.get("patch", "") if overlay else "", part.patches)
+        classic = part.base and not want_orchid(overlay, part) \
+            and not (overlay and (overlay.blocks or overlay.diagrams))
+        if classic:
+            hl = header_layout(meta, diagrams, tab, W, m)
+        else:
+            diagrams, tab = [], []
+            hl = header_layout_blocks(meta, part_blocks(ch, overlay, part), W, m)
     header_h = hl["header_h"]
     gutter = 18
     colw = (W - 2 * m - gutter) / 2
@@ -541,16 +854,18 @@ def render(chart, out, sizes=SIZES):
         chosen = (st, cols, False)
     st, cols, fits = chosen
     c = canvas.Canvas(out, pagesize=pagesize)
-    c.setTitle(meta.get("title", "Song"))
+    c.setTitle(meta.get("title", "Song") + (f" ({part.title})" if part else ""))
     for p in range(pages):
         if p == 0:
-            draw_header(c, meta, diagrams, tab, W, H, m, hl)
+            draw_header(c, meta, diagrams, tab, W, H, m, hl, prefix, suffix,
+                        guitar=part.guitar if part else True)
         else:
-            draw_continuation_header(c, meta, W, H, m)
+            draw_continuation_header(c, meta, W, H, m, part.title if part else "")
         draw_columns(c, st, cols[2 * p:2 * p + 2], m, col_top - colh, colw, gutter)
         c.showPage()
     c.save()
-    return RenderResult(out, st.lyr, st.ch, fits, use_landscape, pages, meta)
+    return RenderResult(out, st.lyr, st.ch, fits, use_landscape, pages, meta,
+                        part.name if part else None)
 
 
 def main(argv):

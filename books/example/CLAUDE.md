@@ -9,3 +9,6 @@ here, with the source of the text in each chart's `# source:` line.
 To start your own book, copy this directory to `books/<name>`, replace `book.toml`,
 `assets/logo.png` (`make_logo.py` draws this placeholder) and `songs/`, and point
 `BOOK.md` at it.
+
+Oh! Susanna carries a `@part drums` block as the README's band-book example; the
+example book has no `parts` list, so the block is ignored in its build.

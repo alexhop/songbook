@@ -1,0 +1,18 @@
+# title: Bare Song
+# artist: R.E.M.
+# key: Am
+# group: Special
+# spread: yes
+# structure: verse 1 – verse 2
+
+[Verse 1]
+Am              C        D
+Bare fixture line one
+Am              C        D
+Bare fixture line two
+
+[Verse 2]
+Am              C        D
+Bare fixture line three
+Am              C        D
+Bare fixture line four
