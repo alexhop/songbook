@@ -413,6 +413,33 @@ def test_render_part_pages(tmp_path):
     assert "roots" in text
 
 
+def test_guide_line_drops_tuning_and_capo_for_non_guitar_part(tmp_path):
+    chart = write_chart(tmp_path, """
+    # title: T
+    # artist: A
+    # key: G
+    # tuning: Standard tuning
+    # capo: No capo
+
+    [Verse 1]
+    G        D7
+    one two three
+
+    @part keys
+    [Verse 1] comp
+    """)
+    keys = songpage.PartSpec("keys", "Keys", guitar=False)
+    songpage.render(str(chart), str(tmp_path / "keys.pdf"), part=keys)
+    text = PdfReader(str(tmp_path / "keys.pdf")).pages[0].extract_text()
+    assert "KEYS" in text and "Key G" in text
+    assert "tuning" not in text.lower() and "capo" not in text.lower()
+
+    guitar1 = songpage.PartSpec("guitar1", "Guitar 1", base=True)
+    songpage.render(str(chart), str(tmp_path / "g1.pdf"), part=guitar1)
+    text = PdfReader(str(tmp_path / "g1.pdf")).pages[0].extract_text()
+    assert "Standard tuning" in text and "No capo" in text
+
+
 def test_part_orchid_override(tmp_path):
     chart = write_chart(tmp_path, BAND_CHART + "\n# orchid: no\n")
     keys = songpage.PartSpec("keys", "Keys", orchid=True)

@@ -52,7 +52,7 @@ everything with `.venv/bin/python`.
   row per song (slug, title, group, start page, lyric size, orientation, fit) and exits
   1 if any song does not fit. With no argument it builds the book named in `BOOK.md`.
 - **Band books.** A `[[parts]]` list in `book.toml` (name, title, chords, default_cue,
-  orchid, intro, patches) makes `build.py` write one PDF per part with a setup page
+  orchid, intro, patches, guitar) makes `build.py` write one PDF per part with a setup page
   after the cover and identical page numbers in every book; the first part is the base
   and shows the chart's own diagrams and tab. Charts append `@part <name>` blocks with
   `# patch:`, `@tab`/`@grid` (labelled monospace), `@diagram`, `@note`, `@image`, and

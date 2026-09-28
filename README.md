@@ -107,13 +107,19 @@ chords = true          # print the chord lines
 orchid = true          # print an Orchid legend: modifier and key per chord
 intro = "parts/keys.md"          # setup notes, printed after the cover
 patches = ["piano", "organ"]     # numbered patch bank for the setup page
+guitar = false                   # drop tuning/capo from the guide line
 
 [[parts]]
 name = "drums"
 title = "Drums"
 chords = false                   # lyrics only, as the roadmap
 default_cue = "straight time"
+guitar = false
 ```
+
+`guitar` defaults to true. Set it `false` for a part that isn't a fretted instrument
+(keys, bass, drums, vocals) so its guide line skips `# tuning:`/`# capo:`, which don't
+mean anything there; it still shows the part title, `Key …` and the patch label.
 
 Each chart then appends one `@part` block per instrument. A part block holds that
 instrument's header material and one cue per section:

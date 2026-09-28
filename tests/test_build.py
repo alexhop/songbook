@@ -136,7 +136,18 @@ def test_load_book_reads_parts():
     assert keys.orchid and keys.patches == ["piano", "organ"]
     assert keys.intro == str(FIXTURE_BAND / "parts" / "keys.md")
     assert drums.chords is False and drums.default_cue == "straight time"
+    assert g1.guitar is True  # default when [[parts]] doesn't set it
     assert build.load_book(FIXTURE_BOOK).parts == []
+
+
+def test_load_book_reads_guitar_flag(tmp_path):
+    book_dir = tmp_path / "b"
+    (book_dir / "songs").mkdir(parents=True)
+    (book_dir / "book.toml").write_text(
+        '[[parts]]\nname = "guitar1"\n\n[[parts]]\nname = "keys"\nguitar = false\n',
+        encoding="utf-8")
+    book = build.load_book(book_dir)
+    assert book.parts[0].guitar is True and book.parts[1].guitar is False
 
 
 def test_load_book_rejects_bad_parts(tmp_path):

@@ -226,6 +226,7 @@ class PartSpec:
     patches: list = field(default_factory=list)
     intro: str | None = None
     base: bool = False   # the book's first part: it also shows the chart's own diagrams and tab
+    guitar: bool = True  # False drops tuning/capo from the guide line (a non-fretted part)
 
 
 def part_items(items, part, spec):
@@ -593,7 +594,8 @@ def header_layout(meta, diagrams, tab, W, m):
             "title_size": 17}
 
 
-def draw_header(c, meta, diagrams, tab, W, H, m, hl=None, guide_prefix="", guide_suffix=""):
+def draw_header(c, meta, diagrams, tab, W, H, m, hl=None, guide_prefix="", guide_suffix="",
+                 guitar=True):
     hl = hl or header_layout(meta, diagrams, tab, W, m)
     top = H - m
     title = meta.get("title", "")
@@ -611,11 +613,14 @@ def draw_header(c, meta, diagrams, tab, W, H, m, hl=None, guide_prefix="", guide
     avail = (bx - 8 if box_w else W - m) - m
 
     # A part prefix/patch suffix can push the guide line wide enough to run under the
-    # header box, so it shrinks the same way the form line below does.
+    # header box, so it shrinks the same way the form line below does. tuning/capo are
+    # guitar-specific and dropped for a part that isn't a fretted instrument.
     guide = " · ".join(v for v in [
         guide_prefix,
         ("Key " + meta["key"]) if "key" in meta else "",
-        meta.get("tuning", ""), meta.get("capo", ""), guide_suffix] if v)
+        meta.get("tuning", "") if guitar else "",
+        meta.get("capo", "") if guitar else "",
+        guide_suffix] if v)
     c.setFillColorRGB(0, 0, 0)
     c.setFont(CH_FONT, guide_size(guide, avail))
     c.drawString(m, top - 37, guide)
@@ -852,7 +857,8 @@ def render(chart, out, sizes=SIZES, part=None):
     c.setTitle(meta.get("title", "Song") + (f" ({part.title})" if part else ""))
     for p in range(pages):
         if p == 0:
-            draw_header(c, meta, diagrams, tab, W, H, m, hl, prefix, suffix)
+            draw_header(c, meta, diagrams, tab, W, H, m, hl, prefix, suffix,
+                        guitar=part.guitar if part else True)
         else:
             draw_continuation_header(c, meta, W, H, m, part.title if part else "")
         draw_columns(c, st, cols[2 * p:2 * p + 2], m, col_top - colh, colw, gutter)

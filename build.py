@@ -77,7 +77,8 @@ def load_parts(cfg, book_dir):
             name=p["name"], title=p.get("title", p["name"].title()),
             chords=bool(p.get("chords", True)), default_cue=p.get("default_cue", ""),
             orchid=bool(p.get("orchid", False)), patches=list(p.get("patches", [])),
-            intro=str(intro) if intro else None, base=i == 0))
+            intro=str(intro) if intro else None, base=i == 0,
+            guitar=bool(p.get("guitar", True))))
     return parts
 
 
