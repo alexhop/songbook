@@ -12,7 +12,7 @@ everything specific to that book (who plays, the song list, decisions, status).
 build.py  songpage.py  fetch_ug.py     the tool
 tests/                                 pytest; fixtures under tests/fixtures/book
 BOOK.md                                names the active book, imports its CLAUDE.md
-books/<name>/book.toml                 title, subtitle, logo, footer mark, group order
+books/<name>/book.toml                 title, subtitle, dedication, logo, footer mark, group order
 books/<name>/songs/*.txt               one chart per song
 books/<name>/assets/                   logo and any other artwork
 books/<name>/CLAUDE.md                 that book's instructions and status

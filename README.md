@@ -27,6 +27,7 @@ book from a `book.toml` with a `[[parts]]` list (see "Band books").
    title = "Our Songbook"
    cover_word = "Songbook"          # printed under the logo on the cover
    subtitle = "Songs for the porch"
+   dedication = "For everyone who ever pulled up a chair."   # optional, printed on the cover
    logo = "assets/logo.png"         # PNG with transparency; delete the line for a text cover
    footer_mark = "auto"             # small logo in each page's footer: "auto", "none", or a path
    groups = ["Singalongs", "Ballads"]   # order of the contents sections

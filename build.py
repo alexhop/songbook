@@ -43,6 +43,7 @@ class Book:
     subtitle: str = ""
     logo: Path | None = None
     footer_mark: str = "auto"   # "auto", "none", or an image path
+    dedication: str = ""
     groups: list[str] = field(default_factory=list)
     parts: list = field(default_factory=list)   # songpage.PartSpec, in book order
 
@@ -102,6 +103,7 @@ def load_book(book_dir):
         subtitle=cfg.get("subtitle", ""),
         logo=logo,
         footer_mark=mark,
+        dedication=cfg.get("dedication", ""),
         groups=list(cfg.get("groups", [])),
         parts=load_parts(cfg, book_dir),
     )
@@ -258,6 +260,14 @@ def draw_cover(out, book, part=None):
         c.setFont(songpage.CH_FONT, 30)
         c.setFillColorRGB(0, 0, 0)
         c.drawCentredString(W / 2, y - 60, part.title)
+        y -= 60
+    if book.dedication:
+        c.setFont(songpage.LYR_FONT, 11.5)
+        c.setFillColorRGB(0.3, 0.3, 0.3)
+        dy = y - 40
+        for line in songpage.wrap_words(book.dedication, songpage.LYR_FONT, 11.5, 380):
+            c.drawCentredString(W / 2, dy, line)
+            dy -= 15
     c.showPage()
     c.save()
 

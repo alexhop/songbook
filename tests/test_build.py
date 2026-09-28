@@ -103,6 +103,22 @@ def test_build_with_logo_and_footer_mark(tmp_path):
     assert (tmp_path / "out" / "songbook.pdf").exists()
 
 
+def test_cover_dedication(tmp_path):
+    book_dir = tmp_path / "dedication-book"
+    (book_dir / "songs").mkdir(parents=True)
+    shutil.copy(FIXTURE_BOOK / "songs" / "short.txt", book_dir / "songs" / "short.txt")
+    (book_dir / "book.toml").write_text(
+        'title = "Dedication Book"\n'
+        'dedication = "For every fixture that never made it to a real book."\n',
+        encoding="utf-8")
+    build.build(book_dir, tmp_path / "out")
+    reader = PdfReader(str(tmp_path / "out" / "songbook.pdf"))
+    assert "never made it to a real book" in reader.pages[0].extract_text()
+    # a book without a dedication still builds fine
+    build.build(FIXTURE_BOOK, tmp_path / "classic")
+    assert (tmp_path / "classic" / "songbook.pdf").exists()
+
+
 def test_plan_order_keeps_spreads_on_even_pages_without_blanks():
     def r(slug, group, pages):
         return build.BuildResult(song(slug, {"title": slug, "group": group}), None, 12, True, False, pages)
